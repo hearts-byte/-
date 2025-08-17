@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userRank = localStorage.getItem('chatUserRank');
     if (addRoomBtn) {
         if (userRank === 'اونر اداري' || userRank === 'المالك') {
-            addRoomBtn.style.display = 'inline-block'; // أو 'flex' حسب تصميمك
+            addRoomBtn.style.display = 'flex'; // أو 'flex' حسب تصميمك
         } else {
             addRoomBtn.style.display = 'none';
         }
