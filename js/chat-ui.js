@@ -1,4 +1,4 @@
-import { getPrivateChatId, sendPrivateMessage, setupPrivateMessagesListener, resetUnreadCount } from './chat-firestore.js';
+import { getPrivateChatId, sendPrivateMessage, setupPrivateMessagesListener } from './chat-firestore.js';
 import { db, serverTimestamp } from './firebase-config.js';
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 
@@ -298,7 +298,7 @@ export async function createAndShowPrivateChatDialog(targetUserData) {
 
   const currentUserId = localStorage.getItem('chatUserId');
   if (currentUserId) {
-    await resetUnreadCount(currentUserId, targetUserData.id);
+    await 
     setupPrivateMessagesListener(currentUserId, targetUserData.id, privateChatMessagesBox, true);
   } else {
     console.error('معرف المستخدم الحالي غير موجود لفتح الدردشة الخاصة.');

@@ -10,6 +10,22 @@ function selectRoom(roomId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // ----------------------------------------------------
+    // الكود المحدث لجلب وعرض صورة البروفايل
+    // ----------------------------------------------------
+    const userProfilePicUrl = localStorage.getItem('chatUserAvatar');
+    const userProfilePicElement = document.getElementById('userProfilePic');
+
+    if (userProfilePicUrl && userProfilePicElement) {
+        userProfilePicElement.src = userProfilePicUrl;
+    } else if (userProfilePicElement) {
+        // إذا لم يتم العثور على صورة، يتم وضع صورة افتراضية
+        userProfilePicElement.src = 'https://via.placeholder.com/100x100.png?text=User';
+    }
+    // ----------------------------------------------------
+    // نهاية الكود المحدث
+    // ----------------------------------------------------
+
     const roomListContainer = document.getElementById('room-list');
     const searchInput = document.getElementById('roomSearch');
     let roomsData = [];
@@ -40,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userRank = localStorage.getItem('chatUserRank');
     if (addRoomBtn) {
         if (userRank === 'اونر اداري' || userRank === 'المالك') {
-            addRoomBtn.style.display = 'inline-block'; // أو 'flex' حسب تصميمك
+            addRoomBtn.style.display = 'inline-block';
         } else {
             addRoomBtn.style.display = 'none';
         }

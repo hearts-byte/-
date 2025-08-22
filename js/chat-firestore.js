@@ -20,6 +20,8 @@ import {
   arrayUnion,
   arrayRemove,
   writeBatch,
+  limit,
+  startAfter
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import { db } from './firebase-config.js';
 import {
@@ -50,117 +52,87 @@ export async function getChatRooms() {
   }
 }
 
-let unsubscribeFromMessages = null;
+// --- تحميل رسائل الغرفة بصفحات (Pagination) ---
+export async function fetchRoomMessages(roomId, pageSize = 50, lastDoc = null) {
+  const messagesCol = collection(db, 'rooms', roomId, 'messages');
+  let q = query(messagesCol, orderBy('timestamp', 'desc'), limit(pageSize));
+  if (lastDoc) {
+    q = query(messagesCol, orderBy('timestamp', 'desc'), startAfter(lastDoc), limit(pageSize));
+  }
+  const snapshot = await getDocs(q);
+  // نعيد الرسائل بترتيب الأقدم أولاً (للعرض الصحيح)
+  return snapshot.docs.reverse();
+}
 
-// الاستماع للرسائل بشكل لحظي
-export function setupRealtimeMessagesListener(roomId) {
-  const chatBox = document.querySelector('#chat-box .chat-box');
-  if (!chatBox) {
-    console.error('لم يتم العثور على عنصر صندوق الدردشة!');
+// تحميل أول صفحة رسائل
+export async function loadInitialMessages(roomId, renderMessages) {
+  const docs = await fetchRoomMessages(roomId, 50);
+  window._messagesPagination = {
+    messages: docs,
+    lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
+    hasMore: docs.length === 50,
+    roomId: roomId
+  };
+  renderMessages(docs, true);
+}
+
+// تحميل المزيد عند التمرير للأعلى
+export async function loadMoreMessages(renderMessages) {
+  const pagination = window._messagesPagination;
+  if (!pagination || !pagination.hasMore || !pagination.lastDoc) return;
+  const docs = await fetchRoomMessages(pagination.roomId, 50, pagination.lastDoc);
+  if (docs.length === 0) {
+    pagination.hasMore = false;
     return;
   }
-  if (unsubscribeFromMessages) {
-    unsubscribeFromMessages();
+  pagination.lastDoc = docs.length > 0 ? docs[docs.length - 1] : pagination.lastDoc;
+  pagination.messages = docs.concat(pagination.messages);
+  renderMessages(docs, false); // أضفهم للأعلى فقط
+}
+
+// الاستماع اللحظي للرسائل الجديدة فقط (بعد آخر رسالة حالية)
+let unsubscribeFromMessages = null;
+export function listenForNewMessages(roomId, onNewMessage) {
+  if (unsubscribeFromMessages) unsubscribeFromMessages();
+  const chatBox = document.querySelector('#chat-box .chat-box');
+  const pagination = window._messagesPagination;
+  let lastTimestamp = null;
+  if (pagination && pagination.messages && pagination.messages.length > 0) {
+    lastTimestamp = pagination.messages[pagination.messages.length - 1].data().timestamp;
   }
-  let isFirstSnapshot = true;
   const messagesCol = collection(db, 'rooms', roomId, 'messages');
-  const messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'));
 
-  unsubscribeFromMessages = onSnapshot(messagesQuery, async snapshot => {
-    if (snapshot.empty && isFirstSnapshot) {
-      chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">ابدأ المحادثة...</div>';
-      isFirstSnapshot = false;
-      return;
-    }
-    const userLookups = {};
-    const senderIdsToLookup = new Set();
+  let messagesQuery;
+  if (lastTimestamp) {
+    messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'), startAfter(lastTimestamp));
+  } else {
+    messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'));
+  }
+
+  unsubscribeFromMessages = onSnapshot(messagesQuery, snapshot => {
     snapshot.docChanges().forEach(change => {
-      const messageData = change.doc.data();
-      if (!messageData.isSystemMessage && messageData.senderId) {
-        senderIdsToLookup.add(messageData.senderId);
-      }
-    });
-    const lookupPromises = Array.from(senderIdsToLookup).map(async (senderId) => {
-      const userRef = doc(db, 'users', senderId);
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
-        userLookups[senderId] = {
-          type: 'registered',
-          rank: userDoc.data().rank || 'عضو',
-          level: userDoc.data().level || 1
-        };
-      } else {
-        const visitorRef = doc(db, 'visitors', senderId);
-        const visitorDoc = await getDoc(visitorRef);
-        if (visitorDoc.exists()) {
-          userLookups[senderId] = {
-            type: 'visitor',
-            rank: visitorDoc.data().rank || 'زائر',
-            level: null
-          };
-        } else {
-          userLookups[senderId] = {
-            type: 'unknown',
-            rank: 'زائر',
-            level: null
-          };
-        }
-      }
-    });
-    await Promise.all(lookupPromises);
-
-    if (isFirstSnapshot) {
-      chatBox.innerHTML = '';
-      isFirstSnapshot = false;
-    }
-
-    snapshot.docChanges().forEach(change => {
-      const messageData = { id: change.doc.id, ...change.doc.data() };
-      const existingMessageElement = chatBox.querySelector(`[data-id="${messageData.id}"]`);
-
       if (change.type === 'added') {
-        if (!existingMessageElement) {
-          let messageElement;
-          if (messageData.isSystemMessage) {
-            messageElement = createSystemMessageElement(messageData.text);
-          } else {
-            messageData.userType = userLookups[messageData.senderId]?.type || 'unknown';
-            messageData.senderRank = userLookups[messageData.senderId]?.rank || 'زائر';
-            messageData.level = userLookups[messageData.senderId]?.level || null;
-            messageElement = createMessageElement(messageData);
-          }
-          chatBox.appendChild(messageElement);
+        const messageData = { id: change.doc.id, ...change.doc.data() };
+        const usersCache = window.allUsersAndVisitorsData || [];
+        const senderData = usersCache.find(u => u.id === messageData.senderId);
+
+        if (!messageData.isSystemMessage) {
+          messageData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+          messageData.senderRank = senderData?.rank || 'زائر';
+          messageData.level = senderData?.level || 1;
         }
-      } else if (change.type === 'modified') {
-        if (existingMessageElement) {
-          existingMessageElement.remove();
-        }
-        let messageElement;
-        if (messageData.isSystemMessage) {
-          messageElement = createSystemMessageElement(messageData.text);
-        } else {
-          messageData.userType = userLookups[messageData.senderId]?.type || 'unknown';
-          messageData.senderRank = userLookups[messageData.senderId]?.rank || 'زائر';
-          messageData.level = userLookups[messageData.senderId]?.level || null;
-          messageElement = createMessageElement(messageData);
-        }
-        chatBox.appendChild(messageElement);
-      } else if (change.type === 'removed') {
-        if (existingMessageElement) {
-          existingMessageElement.remove();
-        }
+        onNewMessage(messageData);
       }
     });
-
+    // تمرير تلقائي للأسفل عند وصول رسالة جديدة
     setTimeout(() => {
       if (chatBox && chatBox.scrollHeight > chatBox.clientHeight) {
         chatBox.scrollTop = chatBox.scrollHeight;
       }
     }, 100);
-
   }, error => {
-    console.error('حدث خطأ أثناء الاستماع للرسائل:', error);
-    chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">فشل تحميل الرسائل. يرجى التحقق من اتصالك بالإنترنت أو قواعد البيانات.</div>';
+    console.error('حدث خطأ أثناء الاستماع للرسائل الجديدة:', error);
+    chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">فشل تحميل الرسائل الجديدة.</div>';
   });
 
   return unsubscribeFromMessages;
@@ -390,6 +362,12 @@ export async function updateUserData(userId, dataToUpdate) {
     await updateDoc(userRef, dataToUpdate);
     console.log("User data updated successfully:", dataToUpdate);
 
+    // بعد نجاح updateDoc: حدث الكاش مباشرة
+    const idx = window.allUsersAndVisitorsData?.findIndex(u => u.id === userId);
+    if (idx !== undefined && idx !== -1) {
+      window.allUsersAndVisitorsData[idx] = { ...window.allUsersAndVisitorsData[idx], ...dataToUpdate };
+    }
+
     if (dataToUpdate.username !== undefined) {
       localStorage.setItem('chatUserName', dataToUpdate.username);
     }
@@ -528,6 +506,14 @@ export function setupPrivateMessagesListener(currentUserId, targetUserId, messag
         }
       }
     });
+
+    // **هذا هو التغيير الرئيسي:**
+    // قم باستدعاء الدالة مع currentUserId و targetUserId
+    resetUnreadCount(currentUserId, targetUserId);
+
+    // تأكد من وجود هذه الدالة
+    updatePrivateButtonNotification();
+
     messagesBoxElement.scrollTop = messagesBoxElement.scrollHeight;
   }, error => {
     console.error("Error getting private messages: ", error);
@@ -535,6 +521,7 @@ export function setupPrivateMessagesListener(currentUserId, targetUserId, messag
   });
   messagesBoxElement._privateChatUnsubscribe = unsubscribe;
 }
+
 
 // جلب جهات اتصال الدردشة الخاصة
 export async function getPrivateChatContacts(currentUserId) {

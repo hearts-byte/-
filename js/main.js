@@ -1,10 +1,13 @@
 // js/main.js
 
+// الكود الصحيح
 import { 
-    loadComponent, createAndShowPrivateChatDialog, createUserInfoModal, updatePrivateButtonNotification, hideUserInfoModal, checkAndSendJoinMessage 
+    loadComponent, createAndShowPrivateChatDialog, createUserInfoModal, updatePrivateButtonNotification, hideUserInfoModal, checkAndSendJoinMessage, 
+    createSystemMessageElement, createMessageElement 
 } from './chat-ui.js';
 import { 
-    setupRealtimeMessagesListener, sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms 
+    loadInitialMessages, loadMoreMessages, listenForNewMessages,
+    sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms 
 } from './chat-firestore.js';
 import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showLevelInfoModal } from './modals.js';
@@ -17,6 +20,8 @@ let profileDropdownMenu = null;
 let profileButton = null;
 let cachedRooms = null;
 let currentRoomId;
+let messagesUnsubscriber = null;
+let isLoadingMoreMessages = false;
 export let allUsersAndVisitorsData = []; 
 
 async function fetchUsersWithRetry(retries = 3) {
@@ -472,6 +477,29 @@ function showRoomsPasswordModal(roomId, roomName, roomPassword) {
     };
 }
 
+function renderMessages(docs, clear = false) {
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    if (!chatBox) return;
+    if (clear) chatBox.innerHTML = '';
+    docs.forEach(docSnap => {
+        const msgData = { id: docSnap.id, ...docSnap.data() };
+        const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+        if (!msgData.isSystemMessage) {
+            msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+            msgData.senderRank = senderData?.rank || 'زائر';
+            msgData.level = senderData?.level || 1;
+        }
+        const elem = msgData.isSystemMessage ?
+            createSystemMessageElement(msgData.text) :
+            createMessageElement(msgData);
+        if (clear) {
+            chatBox.appendChild(elem);
+        } else {
+            chatBox.insertBefore(elem, chatBox.firstChild);
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent("top-bar", "components/top-bar.html");
     await loadComponent("chat-box", "components/chat-box.html");
@@ -479,18 +507,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadComponent("bottom-bar", "components/bottom-bar.html");
     
     try {
-        // عند الدخول للصفحة، اجلب بيانات كل المستخدمين والزوار من قاعدة البيانات (وليس الكاش فقط)
-        getAllUsersAndVisitors(true)
-      .then(data => { window.allUsersAndVisitorsData = data; })
-      .catch(error => {
-          document.querySelector('#chat-box .chat-box').innerHTML =
-            '<div style="text-align: center; color: red;">فشل تحميل بيانات المستخدمين.</div>';
-      });// استخدم forceRefresh لضمان جلب بيانات جديدة
-    } catch (error) {
-        console.error("خطأ في جلب البيانات الأولية للمستخدمين والزوار:", error);
+    // عند الدخول للصفحة، اجلب بيانات كل المستخدمين والزوار (دون الاعتماد على الكاش)
+    window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
+} catch (error) {
+    console.error("خطأ في جلب البيانات الأولية للمستخدمين والزوار:", error);
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    if (chatBox) {
+        chatBox.innerHTML = '<div style="text-align: center; color: red;">فشل تحميل بيانات المستخدمين.</div>';
+    } else {
         document.body.innerHTML = '<div style="text-align: center; color: red; padding-top: 50px;">فشل في تحميل بيانات المستخدمين. يرجى التحقق من اتصالك وقواعد البيانات.</div>';
-        return;
     }
+    return;
+}
 
     // تحقق من وجود بيانات المستخدم في localStorage
     let chatUserId = localStorage.getItem('chatUserId');
@@ -657,10 +685,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
         await loadComponent("bottom-bar", "components/bottom-bar.html");
-        if (chatUserId) await checkAndSendJoinMessage(currentRoomId);
-        setupRealtimeMessagesListener(currentRoomId);
-        if (chatUserId) setupPrivateMessageNotificationListener(chatUserId);
-        profileButton = document.getElementById('profileButton');
+if (chatUserId) await checkAndSendJoinMessage(currentRoomId);
+
+// --- تحميل أول صفحة رسائل ---
+await loadInitialMessages(currentRoomId, renderMessages);
+
+// --- الاستماع اللحظي للرسائل الجديدة فقط ---
+
+if (messagesUnsubscriber) messagesUnsubscriber();
+messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+    if (!msgData.isSystemMessage) {
+        msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+        msgData.senderRank = senderData?.rank || 'زائر';
+        msgData.level = senderData?.level || 1;
+    }
+    const elem = msgData.isSystemMessage ?
+        createSystemMessageElement(msgData.text) :
+        createMessageElement(msgData);
+    chatBox.appendChild(elem);
+    setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 100);
+});
+
+// --- تحميل المزيد عند التمرير للأعلى ---
+let isLoadingMoreMessages = false;
+const chatBox = document.querySelector('#chat-box .chat-box');
+if (chatBox) {
+    chatBox.addEventListener('scroll', async () => {
+        if (chatBox.scrollTop <= 0 && !isLoadingMoreMessages) {
+            isLoadingMoreMessages = true;
+            await loadMoreMessages(renderMessages);
+            isLoadingMoreMessages = false;
+        }
+    });
+}
+
+if (chatUserId) setupPrivateMessageNotificationListener(chatUserId);
+profileButton = document.getElementById('profileButton');
         async function createAndAppendProfileDropdown() {
             profileDropdownMenu = document.createElement('div');
             profileDropdownMenu.id = 'profileDropdownMenu';
@@ -798,7 +862,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             userProfileImage.src = chatUserAvatar || 'https://i.imgur.com/Uo9V2Yx.png';
             userProfileImage.style.display = 'block';
         }
-        setupRealtimeMessagesListener(currentRoomId);
+        
         const refreshButton = document.querySelector('#top-bar .btn.refresh');
         if (refreshButton) refreshButton.addEventListener('click', () => window.location.reload());
         const privateButton = document.querySelector('#top-bar .btn.private');
@@ -838,33 +902,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const messageInput = document.querySelector('#input-bar input');
         const sendButton = document.querySelector('#input-bar .send-btn');
-        let messagesUnsubscriber = null;
+        
         const handleMessageSend = async () => {
-            const messageText = messageInput.value.trim();
-            if (!messageText) return;
-            if (messageText.toLowerCase() === '/clear') {
-                try {
-                    if (messagesUnsubscriber) messagesUnsubscriber();
-                    await deleteChatRoomMessages(currentRoomId);
-                    const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
-                    const confirmationMessage = `تم تنظيف الغرفة من قبل ${chatUserName}`;
-                    await sendSystemMessage(confirmationMessage, currentRoomId);
-                    messagesUnsubscriber = setupRealtimeMessagesListener(currentRoomId);
-                    messageInput.value = '';
-                } catch (error) {
-                    alert('فشل تنظيف الدردشة. ليس لديك الصلاحية لفعل ذلك.');
-                    messagesUnsubscriber = setupRealtimeMessagesListener(currentRoomId);
+    const messageText = messageInput.value.trim();
+    if (!messageText) return;
+
+    if (messageText.toLowerCase() === '/clear') {
+        // **قم بتفريغ الحقل فوراً لمنع الإرسال المتكرر**
+        messageInput.value = ''; 
+
+        try {
+            if (messagesUnsubscriber) messagesUnsubscriber();
+            
+            await deleteChatRoomMessages(currentRoomId);
+            
+            const chatBox = document.querySelector('#chat-box .chat-box');
+            if (chatBox) {
+                chatBox.innerHTML = '';
+            }
+            
+            const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
+            const confirmationMessage = `تم تنظيف الغرفة من قبل ${chatUserName}`;
+            await sendSystemMessage(confirmationMessage, currentRoomId);
+            
+            messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
+                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+                if (!msgData.isSystemMessage) {
+                    msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+                    msgData.senderRank = senderData?.rank || 'زائر';
+                    msgData.level = senderData?.level || 1;
                 }
-                return;
-            }
-            messageInput.value = '';
-            try {
-                await sendMessage(messageText, currentRoomId, null);
-                scrollToBottom();
-            } catch (error) {
-                alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
-            }
-        };
+                const elem = msgData.isSystemMessage ?
+                    createSystemMessageElement(msgData.text) :
+                    createMessageElement(msgData);
+                chatBox.appendChild(elem);
+                setTimeout(() => {
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 100);
+            });
+
+        } catch (error) {
+            alert('فشل تنظيف الدردشة. ليس لديك الصلاحية لفعل ذلك.');
+            // يمكنك ترك هذا الجزء كما هو، أو إضافة كود منع الإرسال هنا أيضًا
+            messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
+                const chatBox = document.querySelector('#chat-box .chat-box');
+                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+                if (!msgData.isSystemMessage) {
+                    msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+                    msgData.senderRank = senderData?.rank || 'زائر';
+                    msgData.level = senderData?.level || 1;
+                }
+                const elem = msgData.isSystemMessage ?
+                    createSystemMessageElement(msgData.text) :
+                    createMessageElement(msgData);
+                chatBox.appendChild(elem);
+                setTimeout(() => {
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }, 100);
+            });
+        }
+        return;
+    }
+
+    // هذا السطر الآن لن يعمل إلا للرسائل العادية
+    messageInput.value = '';
+    try {
+        await sendMessage(messageText, currentRoomId, null);
+        scrollToBottom();
+    } catch (error) {
+        alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
+    }
+};
         if (messageInput && sendButton && currentUserId) {
             sendButton.addEventListener('click', handleMessageSend);
             messageInput.addEventListener('keypress', async (e) => {
