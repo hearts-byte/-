@@ -53,10 +53,11 @@ function createEditProfileModalHTML() {
                     <input type="file" id="innerImageUploadInput" accept="image/*" style="display: none;">
                     <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;">
                     <div class="header-left-actions">
-                        <span class="header-icon close-profile-modal"><i class="fas fa-times"></i></span>
-                        <span class="header-icon change-inner-image"><i class="fas fa-camera"></i></span>
-                        <span class="header-icon delete-inner-image"><i class="fas fa-trash-alt"></i></span>
-                    </div>
+    <span class="header-icon close-profile-modal"><i class="fas fa-times"></i></span>
+    <span id="view-profile-button" class="header-icon"><i class="fas fa-eye"></i></span>
+    <span class="header-icon change-inner-image"><i class="fas fa-camera"></i></span>
+    <span class="header-icon delete-inner-image"><i class="fas fa-trash-alt"></i></span>
+</div>
                     <div class="header-right-profile">
                         <div class="user-main-section-wrapper">
                             <div class="likes-and-level">
