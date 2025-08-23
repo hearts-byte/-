@@ -1,16 +1,29 @@
 // js/modals.js
 
+// js/modals.js
+
 import { RANK_IMAGE_MAP } from './constants.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
-import { updateUserData, addLike, removeLike } from './chat-firestore.js';
+import { updateUserData, addLike, removeLike, SYSTEM_USER } from './chat-firestore.js';
+import { db, auth } from './firebase-config.js'; // تأكد من وجود هذا السطر
 
 // --- Firebase Auth imports for password change modal ---
-import { auth } from './firebase-config.js';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { collection, query, orderBy, onSnapshot, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+// **متغيرات ودوال المودال الرئيسي**
+// js/modals.js
+// ... (الاستيرادات)
+window.notificationsModalUnsubscribe = null;
+
+// تعريف المتغيرات الرئيسية
+const currentUserId = localStorage.getItem('chatUserId');
+const notificationsBadge = document.getElementById('notifications-badge');
 
 // **متغيرات ودوال المودال الرئيسي**
 window.editProfileModal = null;
 window.editProfileCloseButton = null;
+// ... (بقية الكود)
 
 const showLoadingSpinner = (buttonElement) => {
     const icon = buttonElement.querySelector('i');
@@ -614,19 +627,33 @@ function createViewProfileModalHTML() {
                     </div>
                 </div>
                 <div class="tabs-container">
-                    <button class="tab-button active" data-tab="account">حساب</button>
-                    <button class="tab-button" data-tab="gifts">الهدايا</button>
-                    <button class="tab-button" data-tab="more">المزيد</button>
-                </div>
-                <div class="tab-content" id="view-account-tab-content">
-                    <p style="color: #333; text-align: center; padding: 20px;">هذا المحتوى مخصص للعرض فقط.</p>
-                </div>
-                <div class="tab-content" id="view-gifts-tab-content" style="display: none;">
-                    <p style="color: #333; text-align: center; padding: 20px;">لا توجد هدايا لعرضها حاليًا.</p>
-                </div>
-                <div class="tab-content" id="view-more-tab-content" style="display: none;">
-                    <p style="color: #333; text-align: center; padding: 20px;">هذا المحتوى مخصص للعرض فقط.</p>
-                </div>
+    <button class="tab-button active" data-tab="account">حساب</button>
+    <button class="tab-button" data-tab="more">المعلومات</button>
+    <button class="tab-button" data-tab="gifts">الهدايا</button>
+</div>
+              <div class="tab-content" id="view-account-tab-content">
+    <ul class="profile-details-list">
+        <li>
+            <span class="detail-label">العمر:</span>
+            <span class="detail-value" id="view-profile-age"></span>
+        </li>
+        <li>
+            <span class="detail-label">الجنس:</span>
+            <span class="detail-value" id="view-profile-gender"></span>
+        </li>
+        <li>
+            <span class="detail-label">المستوى:</span>
+            <span class="detail-value" id="view-profile-level"></span>
+        </li>
+    </ul>
+</div>
+<div class="tab-content" id="view-more-tab-content" style="display: none;">
+    <p class="user-info-text" id="view-profile-info"></p>
+    <p class="no-info-text" id="no-view-profile-info-message" style="display: none; color: #777; text-align: center; padding: 20px;">لا توجد معلومات إضافية لعرضها.</p>
+</div>
+<div class="tab-content" id="view-gifts-tab-content" style="display: none;">
+    <p style="color: #333; text-align: center; padding: 20px;">لا توجد هدايا لعرضها حاليًا.</p>
+</div>
             </div>
         </div>
     `;
@@ -677,13 +704,15 @@ window.showViewProfileModal = function(userData, allUsersAndVisitorsData) {
     const targetUser = allUsersAndVisitorsData.find(user => user.id === userData.id);
 
     if (targetUser) {
+        // تحديث المعلومات الأساسية للملف الشخصي
         document.getElementById('view-profile-modal-avatar').src = targetUser.avatar || 'images/default-user.png';
         document.getElementById('view-profile-modal-username-display').textContent = targetUser.name || 'غير معروف';
         document.getElementById('view-profile-modal-user-rank').textContent = targetUser.rank || 'زائر';
         document.getElementById('view-profile-modal-rank-image').src = RANK_IMAGE_MAP[targetUser.rank] || 'images/default-rank.png';
         document.getElementById('view-profile-modal-inner-image').src = targetUser.innerImage || 'images/Interior.png';
-document.getElementById('view-profile-modal-status-display').textContent = targetUser.statusText || '';
+        document.getElementById('view-profile-modal-status-display').textContent = targetUser.statusText || '';
 
+        // تحديث معلومات الإعجابات والمستوى
         const likesElement = document.querySelector('#viewProfileModal .likes span');
         const levelElement = document.querySelector('#viewProfileModal .level span');
         const likesContainer = document.querySelector('#viewProfileModal .likes');
@@ -720,7 +749,6 @@ document.getElementById('view-profile-modal-status-display').textContent = targe
                 if (hasLiked) {
                     const didRemove = await removeLike(currentUserId, likedUserId);
                     if (didRemove) {
-                        // تحديث الواجهة والبيانات المحلية عند إلغاء الإعجاب
                         if (userIndex !== -1) {
                             const likeIndex = allUsersAndVisitorsData[userIndex].likes.indexOf(currentUserId);
                             if (likeIndex > -1) {
@@ -732,12 +760,11 @@ document.getElementById('view-profile-modal-status-display').textContent = targe
                         likeIcon.classList.remove('fa-solid');
                         likeIcon.classList.add('fa-regular');
                         likesContainer.removeEventListener('click', likesContainer._listener);
-                        showViewProfileModal(userData, allUsersAndVisitorsData); // إعادة عرض المودال لتحديث المستمع
+                        showViewProfileModal(userData, allUsersAndVisitorsData);
                     }
                 } else {
                     const didLike = await addLike(currentUserId, likedUserId);
                     if (didLike) {
-                        // تحديث الواجهة والبيانات المحلية عند الإعجاب
                         if (userIndex !== -1) {
                             if (!allUsersAndVisitorsData[userIndex].likes) {
                                 allUsersAndVisitorsData[userIndex].likes = [];
@@ -749,7 +776,7 @@ document.getElementById('view-profile-modal-status-display').textContent = targe
                         likeIcon.classList.remove('fa-regular');
                         likeIcon.classList.add('fa-solid');
                         likesContainer.removeEventListener('click', likesContainer._listener);
-                        showViewProfileModal(userData, allUsersAndVisitorsData); // إعادة عرض المودال لتحديث المستمع
+                        showViewProfileModal(userData, allUsersAndVisitorsData);
                     }
                 }
             };
@@ -760,6 +787,27 @@ document.getElementById('view-profile-modal-status-display').textContent = targe
         } else {
             likesContainer.style.cursor = 'default';
         }
+        
+        // ** إضافة الكود الجديد لتحديث محتوى تبويب "حساب" **
+        document.getElementById('view-profile-age').textContent = targetUser.age || 'غير محدد';
+        document.getElementById('view-profile-gender').textContent = targetUser.gender || 'غير محدد';
+        document.getElementById('view-profile-level').textContent = targetUser.level || 1;
+
+        // ** إضافة الكود الجديد لتحديث محتوى تبويب "المعلومات" **
+        const userbioElement = document.getElementById('view-profile-info');
+        const noInfoMessageElement = document.getElementById('no-view-profile-info-message');
+        if (userbioElement && noInfoMessageElement) {
+            if (targetUser.bio && targetUser.bio.trim() !== '') {
+                userbioElement.textContent = targetUser.bio;
+                userbioElement.style.display = 'block';
+                noInfoMessageElement.style.display = 'none';
+            } else {
+                userbioElement.textContent = '';
+                userbioElement.style.display = 'none';
+                noInfoMessageElement.style.display = 'block';
+            }
+        }
+
     } else {
         console.error('بيانات المستخدم غير موجودة للعرض.');
         return;
@@ -829,3 +877,193 @@ function compressImage(imageFile, quality = 0.8) {
         reader.readAsDataURL(imageFile);
     });
 }
+
+// js/modals.js
+
+// ... (باقي الكود)
+
+/**
+ * Creates and shows the notifications modal.
+ */
+// في ملف modals.js
+// ... (الكود السابق)
+export function showNotificationsModal() {
+    if (window.notificationsModal) {
+        return;
+    }
+
+    window.notificationsModal = document.createElement('div');
+    window.notificationsModal.className = 'notifications-modal modal-overlay';
+    window.notificationsModal.innerHTML = `
+        <div class="notifications-container">
+            <div class="modal-header-new">
+                <h3>الإشعارات</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="notifications-list">
+                <div class="empty-state">لا يوجد إشعارات حاليًا.</div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(window.notificationsModal);
+
+    const notificationsBtn = document.getElementById('notifications-btn');
+    if (notificationsBtn) {
+        const btnRect = notificationsBtn.getBoundingClientRect();
+        const modalElement = window.notificationsModal;
+        const modalWidth = 320;
+        const shiftLeft = -110;
+
+        modalElement.style.top = `${btnRect.bottom + 10}px`;
+        modalElement.style.left = `${btnRect.right - modalWidth - shiftLeft}px`;
+    }
+
+    const notificationsList = window.notificationsModal.querySelector('.notifications-list');
+    const emptyState = window.notificationsModal.querySelector('.empty-state');
+    
+    const currentUserId = localStorage.getItem('chatUserId');
+
+    const notificationsQuery = query(
+        collection(db, 'notifications'),
+        where('recipientId', '==', currentUserId),
+        orderBy('timestamp', 'desc')
+    );
+    
+    window.notificationsModalUnsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
+        notificationsList.innerHTML = '';
+        const unreadNotifications = [];
+        
+        if (snapshot.empty) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+            snapshot.forEach((doc) => {
+                const notification = doc.data();
+                const notificationElement = document.createElement('div');
+                // هذا السطر يضيف كلاس "unread" إذا كان الإشعار غير مقروء
+                notificationElement.className = `notification-item ${notification.read ? '' : 'unread'}`;
+                const timestamp = notification.timestamp ? notification.timestamp.toDate().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
+                
+                const senderName = notification.senderName || 'النظام';
+                const senderAvatar = notification.senderAvatar || SYSTEM_USER.avatar;
+                const senderRank = notification.senderRank || SYSTEM_USER.rank;
+
+                notificationElement.innerHTML = `
+                   <div class="notification-sender-info">
+                       <img src="${senderAvatar}" alt="صورة ${senderName}" class="notification-avatar">
+                       <span class="notification-sender">${senderName}</span>
+                       <span class="notification-rank">${senderRank}</span>
+                   </div>
+                   <p class="notification-text">${notification.text}</p>
+                   <span class="notification-timestamp">${timestamp}</span>
+                `;
+                notificationsList.appendChild(notificationElement);
+
+                // أضف الإشعارات غير المقروءة إلى المصفوفة
+                if (!notification.read) {
+                    unreadNotifications.push(doc.ref);
+                }
+            });
+
+            // إذا كان هناك إشعارات غير مقروءة، قم بتحديثها إلى مقروءة
+            if (unreadNotifications.length > 0) {
+                const batch = writeBatch(db);
+                unreadNotifications.forEach(ref => {
+                    batch.update(ref, { read: true });
+                });
+                batch.commit();
+            }
+        }
+    }, (error) => {
+        console.error("خطأ في جلب الإشعارات:", error);
+    });
+
+    const closeBtn = window.notificationsModal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            hideNotificationsModal();
+        });
+    }
+
+    setTimeout(() => {
+        document.addEventListener('click', handleNotificationsModalOutsideClick);
+    }, 100);
+
+    setTimeout(() => {
+        if (window.notificationsModal) {
+            window.notificationsModal.classList.add('show');
+        }
+    }, 10);
+}
+
+// ... (الكود التالي)
+
+// Add this to the hide function to prevent memory leaks
+// في دالة hideNotificationsModal في modals.js
+export function hideNotificationsModal() {
+    if (window.notificationsModal && window.notificationsModal.classList.contains('show')) {
+        window.notificationsModal.classList.remove('show');
+        
+        // إلغاء الاشتراك في المستمع لمنع التكرار
+        if (window.notificationsModalUnsubscribe) {
+            window.notificationsModalUnsubscribe();
+            window.notificationsModalUnsubscribe = null;
+        }
+
+        window.notificationsModal.addEventListener('transitionend', () => {
+            if (window.notificationsModal) {
+                window.notificationsModal.remove();
+                window.notificationsModal = null;
+            }
+        }, { once: true });
+        document.removeEventListener('click', handleNotificationsModalOutsideClick);
+    }
+}
+
+// ... (نهاية دالة hideNotificationsModal)
+
+
+// دالة جديدة للاستماع إلى الإشعارات غير المقروءة
+
+// ... (بقية الكود)
+window.handleNotificationsModalOutsideClick = function(event) {
+    const notificationsBtn = document.getElementById('notifications-btn');
+    if (window.notificationsModal && !window.notificationsModal.contains(event.target) && !notificationsBtn.contains(event.target)) {
+        hideNotificationsModal();
+    }
+};
+
+// ... (نهاية دالة hideNotificationsModal)
+
+
+// دالة جديدة للاستماع إلى الإشعارات غير المقروءة بشكل مستمر
+export function listenForUnreadNotifications() {
+    const currentUserId = localStorage.getItem('chatUserId');
+    const notificationsBadge = document.getElementById('notifications-badge');
+
+    if (!currentUserId || !notificationsBadge) {
+        return;
+    }
+
+    const unreadQuery = query(
+        collection(db, 'notifications'),
+        where('recipientId', '==', currentUserId),
+        where('read', '==', false)
+    );
+
+    onSnapshot(unreadQuery, (snapshot) => {
+        if (snapshot.size > 0) {
+            notificationsBadge.classList.add('show');
+        } else {
+            notificationsBadge.classList.remove('show');
+        }
+    });
+}
+
+// ... (نهاية الدوال)
+
+// استدعاء المستمع الجديد عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    listenForUnreadNotifications();
+});

@@ -139,6 +139,9 @@ export function listenForNewMessages(roomId, onNewMessage) {
 }
 
 // تحديث نقاط الخبرة للمستخدم
+// في ملف chat-firestore.js
+// متغير ثابت يمثل المستخدم النظام
+
 export async function updateUserExperience(userId) {
   const userRef = doc(db, 'users', userId);
   const userDoc = await getDoc(userRef);
@@ -158,7 +161,12 @@ export async function updateUserExperience(userId) {
         currentExp = currentExp - expToNextLevel;
         expToNextLevel = 200 + (level * 100);
         console.log(`تم رفع مستوى المستخدم ${userData.username} إلى المستوى ${level}!`);
-      }
+
+        // إضافة الإشعار باسم النظام// ...
+// إضافة الإشعار باسم النظام
+const notificationText = `تهانينا، لقد ارتفع مستواك إلى المستوى ${level}!`;
+await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
+}
 
       await updateDoc(userRef, {
         level,
@@ -355,32 +363,39 @@ export async function getUserData(userId) {
   }
 }
 
-// تحديث بيانات المستخدم (يُسمح فقط للمستخدم بتعديل بياناته)
+// متغير ثابت يمثل المستخدم النظام
+
+
 export async function updateUserData(userId, dataToUpdate) {
   try {
     const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    if (!userDoc.exists()) {
+      console.error("المستخدم غير موجود.");
+      return false;
+    }
+    const oldUserData = userDoc.data();
+
+    // فحص تغيير الاسم وإضافة الإشعار
+    // ...
+// فحص تغيير الاسم وإضافة الإشعار
+if (dataToUpdate.username !== undefined && dataToUpdate.username !== oldUserData.username) {
+    const notificationText = `تم تغيير اسمك من "${oldUserData.username}" إلى "${dataToUpdate.username}".`;
+    // إرسال الإشعار باسم النظام
+    await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
+}
+// ...
+// فحص تغيير الرتبة وإضافة الإشعار
+if (dataToUpdate.rank !== undefined && dataToUpdate.rank !== oldUserData.rank) {
+    const notificationText = `تهانينا! لقد تم ترقيتك إلى رتبة "${dataToUpdate.rank}".`;
+    // إرسال الإشعار باسم النظام
+    await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
+}
+// ...
+
     await updateDoc(userRef, dataToUpdate);
     console.log("User data updated successfully:", dataToUpdate);
-
-    // بعد نجاح updateDoc: حدث الكاش مباشرة
-    const idx = window.allUsersAndVisitorsData?.findIndex(u => u.id === userId);
-    if (idx !== undefined && idx !== -1) {
-      window.allUsersAndVisitorsData[idx] = { ...window.allUsersAndVisitorsData[idx], ...dataToUpdate };
-    }
-
-    if (dataToUpdate.username !== undefined) {
-      localStorage.setItem('chatUserName', dataToUpdate.username);
-    }
-    if (dataToUpdate.innerImage !== undefined) {
-      if (dataToUpdate.innerImage === null) {
-        localStorage.removeItem('chatUserInnerImage');
-      } else {
-        localStorage.setItem('chatUserInnerImage', dataToUpdate.innerImage);
-      }
-    }
-    if (dataToUpdate.avatar !== undefined) {
-      localStorage.setItem('chatUserAvatar', dataToUpdate.avatar);
-    }
+    // ... (بقية الكود)
     return true;
   } catch (error) {
     console.error("خطأ في تحديث بيانات المستخدم/الزائر:", error);
@@ -693,4 +708,40 @@ export async function removeLike(likerId, likedUserId) {
     console.error('فشل إلغاء الإعجاب:', error);
     return false;
   }
+}
+
+// في مكان ما في ملفك، أضف هذ// في مكان ما في ملفك، أضف هذا المتغير الثابت
+// في ملف chat-firestore.js
+
+// تأكد من وجود كلمة 'export' قبل const
+export const SYSTEM_USER = {
+    id: 'system',
+    username: 'النظام',
+    rank: 'ادمن',
+    avatar: 'default_bot.png'
+};
+
+// ... (بقية الكود)
+
+// ...
+
+/**
+ * يضيف إشعارًا جديدًا إلى مجموعة الإشعارات في Firestore.
+ * @param {string} text - نص الإشعار.
+ * @param {object} sender - كائن يحتوي على id و username للمرسل.
+ */
+export async function addNotification(text, sender, recipientId) {
+    try {
+        await addDoc(collection(db, 'notifications'), {
+            text: text,
+            timestamp: serverTimestamp(),
+            senderId: sender.id,
+            senderName: sender.username,
+            recipientId: recipientId,
+            read: false // أضف هذا السطر هنا
+        });
+        console.log("تم إضافة إشعار بنجاح.");
+    } catch (error) {
+        console.error("خطأ في إضافة الإشعار: ", error);
+    }
 }

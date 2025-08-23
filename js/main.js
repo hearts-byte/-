@@ -10,12 +10,13 @@ import {
     sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms 
 } from './chat-firestore.js';
 import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
-import { showLevelInfoModal } from './modals.js';
+import { showLevelInfoModal, showNotificationsModal, listenForUnreadNotifications } from './modals.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
 
 let privateChatModal = null;
 let onlineUsersModal = null;
 let searchModal = null;
+let notificationsModal = null;
 let profileDropdownMenu = null;
 let profileButton = null;
 let cachedRooms = null;
@@ -32,6 +33,14 @@ async function fetchUsersWithRetry(retries = 3) {
             if (i === retries - 1) throw error;
             await new Promise(r => setTimeout(r, 1000)); // انتظر ثانية وأعد المحاولة
         }
+    }
+}
+
+function hideNotificationsModal() {
+    if (notificationsModal) {
+        notificationsModal.remove();
+        notificationsModal = null;
+        document.removeEventListener('click', handleNotificationsModalOutsideClick);
     }
 }
 
@@ -87,6 +96,7 @@ function hideAllOpenModals() {
     if (typeof hideSearchModal === 'function') hideSearchModal();
     if (typeof window.hideEditProfileModal === 'function') window.hideEditProfileModal();
     if (typeof hideProfileDropdown === 'function') hideProfileDropdown();
+    if (typeof hideNotificationsModal === 'function') hideNotificationsModal();
 }
 
 function scrollToBottom() {
@@ -879,6 +889,18 @@ profileButton = document.getElementById('profileButton');
                 createOnlineUsersModal(onlineUsersButton);
             });
         }
+        const notificationsBtn = document.getElementById('notifications-btn');
+if (notificationsBtn) {
+    notificationsBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        showNotificationsModal();
+    });
+}
+
+if (currentUserId) {
+    listenForUnreadNotifications();
+}
+
         const editProfileButton = document.getElementById('editProfileButton');
         if (editProfileButton) {
             editProfileButton.addEventListener('click', async (event) => {
