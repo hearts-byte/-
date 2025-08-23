@@ -914,7 +914,7 @@ export function showNotificationsModal() {
         const btnRect = notificationsBtn.getBoundingClientRect();
         const modalElement = window.notificationsModal;
         const modalWidth = 320;
-        const shiftLeft = -110;
+        const shiftLeft = -115;
 
         modalElement.style.top = `${btnRect.bottom + 10}px`;
         modalElement.style.left = `${btnRect.right - modalWidth - shiftLeft}px`;
