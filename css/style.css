@@ -796,15 +796,21 @@ body {
 }
 
 /* User Info Modal (when clicking on user avatar/name in chat) */
-/* مثال للتنسيقات في style.css بعد التعديل */
+/* الكود الذي أرسلته، تم تعديله ليعمل بشكل صحيح */
 .user-info-modal {
-    position: fixed; /* يبقى ثابتًا ليعمل فوق كل شيء */
-    /* قم بإزالة أي خصائص display: flex, justify-content, align-items إذا كانت موجودة هنا */
-    background-color: rgba(0, 0, 0, 0.6); /* خلفية شبه شفافة */
-    z-index: 1000; /* مهم لضمان ظهوره فوق المودالات الأخرى */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: none;
+    z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    border-radius: 12px; /* للحفاظ على الشكل الجمالي */
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
 }
 
 .user-info-modal.show {
@@ -812,104 +818,129 @@ body {
     visibility: visible;
 }
 
-/* تأكد من أن هذا موجود أو أضفه لتمكين تموضع زر الإغلاق */
 .user-info-modal .modal-content {
-    background-color: #eee;
-    padding: 25px 20px;
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    padding: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     text-align: center;
-    max-width: 320px;
-    width: 90%;
+    width: 240px;
+    max-width: 240px;
+    max-height: 380px;
+    overflow-y: auto;
     color: #333;
-    position: relative; /* **تأكد من وجود هذا السطر** */
-    /* يمكن تعديل ال padding ليتناسب مع موقع زر الاغلاق اذا دعت الحاجة */
-    padding-top: 20px; /* لترك مساحة لزر الإغلاق في الأعلى */
-    padding-bottom: 20px;
+    position: relative;
 }
+
+.user-info-modal .user-profile-header {
+    width: 100%; /* ✨ الآن يملأ عرض النافذة بالكامل */
+    height: 220px;
+    position: absolute; /* ✨ تموضع مطلق */
+    top: 0; /* ✨ يبدأ من أعلى النافذة */
+    left: 0;
+    overflow: hidden;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    z-index: 1; /* ✨ z-index منخفض ليكون في الخلف */
+}
+
+/* الأنماط الأخرى لم تتغير */
+.user-info-modal .profile-header-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* الأنماط الأخرى كما هي */
 
 .user-info-modal .close-button {
-    position: absolute; /* **جعله مطلقاً بالنسبة للعنصر الأب** */
-    top: 10px; /* **المسافة من الأعلى** */
-    left: 10px; /* **المسافة من اليسار** */
-    font-size: 1.8em; /* حجم أكبر قليلاً */
-    color: #ccc; /* لون فاتح ليتناسب مع الخلفية الداكنة */
+    position: absolute;
+    top: 15px;
+    /* ✨ تم تعديل هذا السطر */
+    right: auto; 
+    /* ✨ تم إضافة هذا السطر */
+    left: 15px; 
+    font-size: 2em;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
     cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0; /* إزالة أي حشوة افتراضية */
-    line-height: 1; /* ضبط ارتفاع السطر لمنع مشاكل المحاذاة */
-    transition: color 0.2s ease;
-    z-index: 1; /* لضمان ظهوره فوق المحتوى */
+    transition: color 0.2s ease, transform 0.2s ease;
+    z-index: 3;
 }
+
+/* الأنماط الأخرى كما هي */
+
 
 .user-info-modal .close-button:hover {
-    color: #fff; /* تغيير اللون عند التحويم */
+    color: #eee;
+    transform: rotate(90deg);
 }
 
+/* الأنماط الأخرى كما هي */
+
+/* الأنماط الأخرى كما هي */
+
 .user-info-modal .user-avatar-large {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    /* ✨ اجعل نصف القطر 50% لتحويلها إلى دائرة */
+    border-radius: 50%; 
     object-fit: cover;
     margin-bottom: 10px;
-    border: 3px solid #007bff; /* لون حدود الصورة */
+    border: 3px solid #fff;
+    z-index: 2;
+    position: relative;
+    margin-top: 15px;
+}
+
+/* الأنماط الأخرى كما هي */
+
+
+.user-info-modal .user-rank-info {
+    z-index: 2; /* ✨ تم إضافة هذا السطر لرفع الرتبة إلى طبقة أعلى */
+    position: relative;
 }
 
 .user-info-modal .user-name-display {
     font-weight: bold;
-    font-size: 1.1em;
-    color: #333;
+    font-size: 1.2em;
+    color: #fff;
     margin-bottom: 20px;
+    text-shadow: none;
+    z-index: 2;
+    position: relative;
 }
 
-/* تعديل .modal-content لإعطاء مساحة داخلية */
+/* الأنماط الأخرى كما هي */
 
-/* تنسيق الفاصل والأزرار */
+
 .user-info-modal .modal-buttons {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    
-    /* هذا هو الجزء الأهم لإنشاء الفاصل */
-    border-top: 1px solid #ccc; /* إضافة خط رمادي رفيع كفاصل */
-    padding-top: 20px; /* إضافة مساحة فوق الخط */
-    margin-top: 20px; /* إضافة مساحة بين الاسم والخط */
-}
-
-/* تعديل المسافات للوصف */
-.user-info-modal .user-bio {
-    margin-top: 15px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+    margin-top: 20px;
 }
 
 .user-info-modal .modal-button {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 8px;
+    background: #e9ecef;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.2s ease;
-    width: 100%; /* جعل الأزرار تأخذ عرض المودال كاملاً */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    width: 100%;
 }
 
-.user-info-modal .modal-button.view-profile {
-    background-color: #007bff; /* لون زر "عرض الملف الشخصي" */
-    color: white;
+.user-info-modal .modal-button:hover {
+    background-color: #dee2e6;
+    transform: translateY(-2px);
 }
 
-.user-info-modal .modal-button.view-profile:hover {
-    background-color: #0056b3;
-}
-
-.user-info-modal .modal-button.start-private {
-    background-color: #28a745; /* لون زر "بدء خاص" */
-    color: white;
-}
-
-.user-info-modal .modal-button.start-private:hover {
-    background-color: #218838;
-}
-
+/* مثال للتنسيقات في style.css بعد التعديل */
 /* js/style.css */
 
 /* ... (الأنماط الحالية لديك) ... */
