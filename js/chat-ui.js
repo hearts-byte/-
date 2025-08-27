@@ -1,6 +1,44 @@
 import { getPrivateChatId, sendPrivateMessage, setupPrivateMessagesListener } from './chat-firestore.js';
 import { db, serverTimestamp } from './firebase-config.js';
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
+import { showCommandsModal } from './chat-commands-modal.js';
+
+// في ملف js/chat-ui.js
+// ... (الاستيرادات)
+ 
+// دالة شاملة لتحديث رتبة المستخدم في كل مكان بالواجهة
+export function updateUserRankInUI(userId, newRank) {
+    // 1. تحديث الرسائل الموجودة في الدردشة
+    const userMessages = document.querySelectorAll(`.message-item[data-sender-id="${userId}"]`);
+    userMessages.forEach(messageElement => {
+        const rankImage = messageElement.querySelector('.rank-icon');
+        if (rankImage) {
+            rankImage.src = RANK_IMAGE_MAP[newRank] || 'images/default-rank.png';
+            rankImage.alt = newRank;
+        }
+    });
+ 
+    // 2. تحديث قائمة المتصلين
+    const onlineUserItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+    if (onlineUserItem) {
+        const rankImage = onlineUserItem.querySelector('.user-rank-image-small');
+        if (rankImage) {
+            rankImage.src = RANK_IMAGE_MAP[newRank] || 'images/default-rank.png';
+            rankImage.alt = newRank;
+        }
+    }
+ 
+    // 3. تحديث المودال إذا كان مفتوحًا
+    if (window.userInfoModal && window.userInfoModal.dataset.userId === userId) {
+        const rankImage = window.userInfoModal.querySelector('.user-rank-image-modal');
+        if (rankImage) {
+            rankImage.src = RANK_IMAGE_MAP[newRank] || 'images/default-rank.png';
+            rankImage.alt = newRank;
+        }
+    }
+}
+ 
+// ... (بقية الكود في chat-ui.js)
 
 export async function loadComponent(id, file) {
   const res = await fetch(file);
@@ -75,24 +113,50 @@ export function createUserInfoModal(targetElement, userData, allUsersAndVisitors
     viewerIsVisitor = true;
   }
 
-  userInfoModal = document.createElement('div');
-  userInfoModal.classList.add('user-info-modal');
-  userInfoModal.innerHTML = `
-    <div class="modal-content">
-      <span class="close-button">&times;</span>
-      <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name}" class="user-avatar-large">
-      ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
-      <div class="user-name-display"></div>
-      <div class="modal-buttons">
-        <button class="modal-button view-profile">عرض الملف الشخصي</button>
-        <button class="modal-button start-private">بدء خاص</button> 
-      </div>
-      ${userData.bio ? `<p class="user-bio"></p>` : ''}
+ userInfoModal = document.createElement('div');
+userInfoModal.classList.add('user-info-modal');
+userInfoModal.innerHTML = `
+<div class="modal-content">
+  <span class="close-button">&times;</span>
+  <div class="user-profile-header">
+    <img src="${userData.innerImage || 'images/Interior.png'}" alt="صورة الخلفية" class="profile-header-image">
+  </div>
+  <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name}" class="user-avatar-large">
+  <div class="user-info-group"> ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
+    <div class="user-name-display">${userData.name}</div>
+    <div class="modal-buttons">
+      <button class="modal-button view-profile">عرض الملف الشخصي</button>
+      <button class="modal-button start-private">بدء خاص</button>
+      <button class="modal-button commands-btn">الأوامر</button>
     </div>
-  `;
+  </div>
+</div>
+`;
+
+
+
+// ... (داخل دالة createUserInfoModal)
+
+// تحديد هوية المستخدم الحالي
+
+// ... (بقية الكود)
+
+const commandsButton = userInfoModal.querySelector('.modal-button.commands-btn');
+if (commandsButton) {
+  // ✨ هذا هو الشرط الجديد
+  if (isCurrentUser) {
+    commandsButton.style.display = 'none';
+  } else {
+    // إذا لم يكن المستخدم هو صاحب الحساب، نضيف له معالج النقر
+    commandsButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      hideUserInfoModal();
+      showCommandsModal(userData);
+    });
+  }
+}
 
   userInfoModal.querySelector('.user-name-display').textContent = userData.name;
-  if (userData.bio) userInfoModal.querySelector('.user-bio').textContent = userData.bio;
 
   document.body.appendChild(userInfoModal);
 
@@ -257,6 +321,11 @@ function hideMinimizedChatAvatar(userId) {
 }
 
 export async function createAndShowPrivateChatDialog(targetUserData) {
+  const existingDialog = document.getElementById('privateChatDialog');
+    if (existingDialog) {
+        existingDialog.remove();
+    }
+    
   if (minimizedPrivateChat && minimizedPrivateChat.id === targetUserData.id) {
     restorePrivateChatDialog(targetUserData);
     return;
@@ -358,7 +427,7 @@ export function hidePrivateChatDialog() {
 function mentionUserInInput(userName) {
   const chatInput = document.querySelector('#input-bar input');
   if (chatInput) {
-    chatInput.value = `${userName} `;
+    chatInput.value += `${userName} `;
     chatInput.focus();
   }
 }
@@ -492,17 +561,28 @@ export function createMessageElement(messageData) {
   }
 
   const userAvatarDiv = messageItem.querySelector('.user-avatar');
-  if (userAvatarDiv) {
-    userAvatarDiv.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const userData = {
-        id: userAvatarDiv.dataset.userId,
+if (userAvatarDiv) {
+  userAvatarDiv.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const userId = userAvatarDiv.dataset.userId;
+
+    // ✨ ابحث عن الكائن الكامل للمستخدم في ذاكرة التخزين المؤقت.
+    const fullUserData = window.allUsersAndVisitorsData.find(user => user.id === userId);
+
+    if (fullUserData) {
+      // إذا تم العثور على المستخدم في الذاكرة المؤقتة، استخدم بياناته الكاملة.
+      createUserInfoModal(userAvatarDiv, fullUserData, window.allUsersAndVisitorsData);
+    } else {
+      // إذا لم يتم العثور عليه (لسبب ما)، عد إلى البيانات الأساسية.
+      const partialUserData = {
+        id: userId,
         name: userAvatarDiv.dataset.userName,
         avatar: userAvatarDiv.dataset.userAvatar
       };
-      createUserInfoModal(userAvatarDiv, userData, window.allUsersAndVisitorsData);
-    });
-  }
+      createUserInfoModal(userAvatarDiv, partialUserData, window.allUsersAndVisitorsData);
+    }
+  });
+}
 
   const dotsOptionsDiv = messageItem.querySelector('.dots-options');
   if (dotsOptionsDiv) {
@@ -668,3 +748,4 @@ export function showImageInModal(imageUrl) {
     }
   }
 }
+

@@ -1,5 +1,4 @@
 // js/main.js
-
 // الكود الصحيح
 import { 
     loadComponent, createAndShowPrivateChatDialog, createUserInfoModal, updatePrivateButtonNotification, hideUserInfoModal, checkAndSendJoinMessage, 
@@ -7,11 +6,13 @@ import {
 } from './chat-ui.js';
 import { 
     loadInitialMessages, loadMoreMessages, listenForNewMessages,
-    sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms 
+    sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms, listenForUserRankChanges
 } from './chat-firestore.js';
 import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showLevelInfoModal, showNotificationsModal, listenForUnreadNotifications } from './modals.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
+import { db, auth } from './firebase-config.js'; // تأكد من استيراد db و auth
+import { doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 let privateChatModal = null;
 let onlineUsersModal = null;
@@ -24,6 +25,42 @@ let currentRoomId;
 let messagesUnsubscriber = null;
 let isLoadingMoreMessages = false;
 export let allUsersAndVisitorsData = []; 
+// js/main.js
+
+// js/main.js
+ 
+// ...
+ 
+let isReloading = false;
+ 
+// إضافة مستمع لحالة المستخدم لتحديث الرتبة والصلاحيات عند تغييرها
+auth.onAuthStateChanged(user => {
+    if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        onSnapshot(userDocRef, (docSnap) => {
+            const userData = docSnap.data();
+            if (userData && userData.needsRefresh && !isReloading) {
+                isReloading = true;
+ 
+                // تحديث الرتبة في localStorage
+                if (userData.rank) {
+                    localStorage.setItem('chatUserRank', userData.rank);
+                }
+ 
+                // إعادة تعيين الحقل إلى false
+                updateDoc(userDocRef, {
+                    needsRefresh: false
+                }).then(() => {
+                    // تحديث الصفحة بعد إعادة تعيين الحقل بنجاح
+                    window.location.reload();
+                }).catch((error) => {
+                    console.error("خطأ في إعادة تعيين حقل التحديث:", error);
+                    window.location.reload();
+                });
+            }
+        });
+    }
+});
 
 async function fetchUsersWithRetry(retries = 3) {
     for (let i = 0; i < retries; i++) {
@@ -719,6 +756,8 @@ messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
         chatBox.scrollTop = chatBox.scrollHeight;
     }, 100);
 });
+
+listenForUserRankChanges();
 
 // --- تحميل المزيد عند التمرير للأعلى ---
 let isLoadingMoreMessages = false;

@@ -1,6 +1,4 @@
-// chat-firestore.js (نسخة مُحسّنة ومحدثة بالكامل)
-// استخدام Firebase v9 modular، إزالة التعامل مع كلمات المرور، تعزيز الأمان والأداء
-
+// chat-firestore.js
 import {
   getFirestore,
   collection,
@@ -32,11 +30,51 @@ import {
   hideActiveQuoteBubble,
   updatePrivateButtonNotification,
   updatePrivateChatNotification,
-  currentOpenPrivateChatId
+  currentOpenPrivateChatId, updateUserRankInUI
 } from './chat-ui.js';
 import { RANK_ORDER } from './constants.js';
 
-// جلب غرف الدردشة
+// في ملف js/chat-firestore.js
+// ... (الاستيرادات)
+// ...
+ 
+// دالة المستمع التي تراقب التغييرات في Firestore
+// في ملف chat-firestore.js
+
+ 
+export function listenForUserRankChanges() {
+    const usersCollectionRef = collection(db, "users");
+    const currentUserId = localStorage.getItem('chatUserId');
+ 
+    onSnapshot(usersCollectionRef, (querySnapshot) => {
+        querySnapshot.docChanges().forEach((change) => {
+            if (change.type === "modified") {
+                const userData = change.doc.data();
+                const userId = change.doc.id;
+ 
+                // تحديث الكاش المحلي
+                const userInCache = window.allUsersAndVisitorsData.find(u => u.id === userId);
+                if (userInCache) {
+                    userInCache.rank = userData.rank;
+                }
+ 
+                // ✨ هذا هو الكود الجديد الذي يجب إضافته
+                // إذا كان المستخدم المحدث هو أنت، قم بتحديث الذاكرة المحلية أيضًا
+                if (userId === currentUserId) {
+                    localStorage.setItem('chatUserRank', userData.rank);
+                    sessionStorage.setItem('chatUserRank', userData.rank);
+                }
+                // ✨ نهاية الكود الجديد
+ 
+                // استدعاء دالة التحديث الشاملة
+                updateUserRankInUI(userId, userData.rank);
+            }
+        });
+    });
+}
+ 
+// ... (بقية الكود في chat-firestore.js)
+
 export async function getChatRooms() {
   try {
     const roomsCol = collection(db, 'rooms');
@@ -47,12 +85,11 @@ export async function getChatRooms() {
     }));
     return roomsList;
   } catch (error) {
-    console.error("خطأ في جلب الغرف من Firestore:", error);
+    console.error("Error getting rooms:", error);
     throw error;
   }
 }
 
-// --- تحميل رسائل الغرفة بصفحات (Pagination) ---
 export async function fetchRoomMessages(roomId, pageSize = 50, lastDoc = null) {
   const messagesCol = collection(db, 'rooms', roomId, 'messages');
   let q = query(messagesCol, orderBy('timestamp', 'desc'), limit(pageSize));
@@ -60,11 +97,9 @@ export async function fetchRoomMessages(roomId, pageSize = 50, lastDoc = null) {
     q = query(messagesCol, orderBy('timestamp', 'desc'), startAfter(lastDoc), limit(pageSize));
   }
   const snapshot = await getDocs(q);
-  // نعيد الرسائل بترتيب الأقدم أولاً (للعرض الصحيح)
   return snapshot.docs.reverse();
 }
 
-// تحميل أول صفحة رسائل
 export async function loadInitialMessages(roomId, renderMessages) {
   const docs = await fetchRoomMessages(roomId, 50);
   window._messagesPagination = {
@@ -76,7 +111,6 @@ export async function loadInitialMessages(roomId, renderMessages) {
   renderMessages(docs, true);
 }
 
-// تحميل المزيد عند التمرير للأعلى
 export async function loadMoreMessages(renderMessages) {
   const pagination = window._messagesPagination;
   if (!pagination || !pagination.hasMore || !pagination.lastDoc) return;
@@ -87,10 +121,9 @@ export async function loadMoreMessages(renderMessages) {
   }
   pagination.lastDoc = docs.length > 0 ? docs[docs.length - 1] : pagination.lastDoc;
   pagination.messages = docs.concat(pagination.messages);
-  renderMessages(docs, false); // أضفهم للأعلى فقط
+  renderMessages(docs, false);
 }
 
-// الاستماع اللحظي للرسائل الجديدة فقط (بعد آخر رسالة حالية)
 let unsubscribeFromMessages = null;
 export function listenForNewMessages(roomId, onNewMessage) {
   if (unsubscribeFromMessages) unsubscribeFromMessages();
@@ -124,23 +157,18 @@ export function listenForNewMessages(roomId, onNewMessage) {
         onNewMessage(messageData);
       }
     });
-    // تمرير تلقائي للأسفل عند وصول رسالة جديدة
     setTimeout(() => {
       if (chatBox && chatBox.scrollHeight > chatBox.clientHeight) {
         chatBox.scrollTop = chatBox.scrollHeight;
       }
     }, 100);
   }, error => {
-    console.error('حدث خطأ أثناء الاستماع للرسائل الجديدة:', error);
-    chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">فشل تحميل الرسائل الجديدة.</div>';
+    console.error('Error listening to messages:', error);
+    chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Failed to load messages.</div>';
   });
 
   return unsubscribeFromMessages;
 }
-
-// تحديث نقاط الخبرة للمستخدم
-// في ملف chat-firestore.js
-// متغير ثابت يمثل المستخدم النظام
 
 export async function updateUserExperience(userId) {
   const userRef = doc(db, 'users', userId);
@@ -160,13 +188,9 @@ export async function updateUserExperience(userId) {
         level++;
         currentExp = currentExp - expToNextLevel;
         expToNextLevel = 200 + (level * 100);
-        console.log(`تم رفع مستوى المستخدم ${userData.username} إلى المستوى ${level}!`);
-
-        // إضافة الإشعار باسم النظام// ...
-// إضافة الإشعار باسم النظام
-const notificationText = `تهانينا، لقد ارتفع مستواك إلى المستوى ${level}!`;
-await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
-}
+        const notificationText = `تهانينا، لقد ارتفع مستواك إلى المستوى ${level}!`;
+        await addNotification(notificationText, SYSTEM_USER, userId);
+      }
 
       await updateDoc(userRef, {
         level,
@@ -180,7 +204,6 @@ await addNotification(notificationText, SYSTEM_USER, userId); // إضافة user
   return null;
 }
 
-// إرسال رسالة عامة في الغرفة
 export async function sendMessage(messageText, roomId, imageUrl = null) {
   if ((!messageText || messageText.trim() === '') && !imageUrl) {
     if (!activeQuoteData) {
@@ -189,40 +212,35 @@ export async function sendMessage(messageText, roomId, imageUrl = null) {
   }
   const currentUserId = localStorage.getItem('chatUserId');
   if (!currentUserId) {
-    console.error('لا يوجد معرف مستخدم مخزن. يرجى تسجيل الدخول أولاً.');
-    alert('الرجاء تسجيل الدخول لإرسال الرسائل.');
+    console.error('No user ID found.');
+    alert('Please login to send messages.');
     return;
   }
- // جلب بيانات المستخدم سواء عضو أو زائر
-let userData, currentUserName, currentUserAvatar, currentUserRank, currentUserLevel;
-let userDoc = await getDoc(doc(db, 'users', currentUserId));
 
-if (userDoc.exists()) {
-  userData = userDoc.data();
-  currentUserName = userData.username;
-  currentUserAvatar = userData.avatar;
-  currentUserRank = userData.rank || 'عضو';
-  currentUserLevel = userData.level || 1;
-  // فقط الأعضاء يحدث لهم نقاط الخبرة
-  await updateUserExperience(currentUserId);
-} else {
-  // جرب جلب كزائر
-  userDoc = await getDoc(doc(db, 'visitors', currentUserId));
+  let userData, currentUserName, currentUserAvatar, currentUserRank, currentUserLevel;
+  let userDoc = await getDoc(doc(db, 'users', currentUserId));
+
   if (userDoc.exists()) {
     userData = userDoc.data();
-    currentUserName = userData.name;
+    currentUserName = userData.username;
     currentUserAvatar = userData.avatar;
-    currentUserRank = userData.rank || 'زائر';
-    currentUserLevel = 1;
-    // الزوار لا يحتاج تحديث نقاط الخبرة
+    currentUserRank = userData.rank || 'عضو';
+    currentUserLevel = userData.level || 1;
+    await updateUserExperience(currentUserId);
   } else {
-    console.error('المستخدم غير موجود في قاعدة البيانات.');
-    alert('تعذر العثور على حسابك في قاعدة البيانات. يرجى إعادة الدخول.');
-    return;
+    userDoc = await getDoc(doc(db, 'visitors', currentUserId));
+    if (userDoc.exists()) {
+      userData = userDoc.data();
+      currentUserName = userData.name;
+      currentUserAvatar = userData.avatar;
+      currentUserRank = userData.rank || 'زائر';
+      currentUserLevel = 1;
+    } else {
+      console.error('User not found.');
+      alert('Account not found. Please login again.');
+      return;
+    }
   }
-}
-
-  await updateUserExperience(currentUserId);
 
   const newMessage = {
     user: currentUserName,
@@ -257,21 +275,20 @@ if (userDoc.exists()) {
       }
     }
   } catch (error) {
-    console.error('خطأ في جلب بيانات المستخدمين للتحقق من المنشن:', error);
+    console.error('Error checking mentions:', error);
   }
 
   try {
     const messagesCol = collection(db, 'rooms', roomId, 'messages');
     await addDoc(messagesCol, newMessage);
-    console.log('تم إرسال الرسالة بنجاح!');
+    console.log('Message sent successfully!');
     hideActiveQuoteBubble();
   } catch (e) {
-    console.error('خطأ في إرسال الرسالة: ', e);
-    alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
+    console.error('Error sending message: ', e);
+    alert('Failed to send message. Please try again.');
   }
 }
 
-// إرسال رسالة نظام
 export async function sendSystemMessage(text, roomId) {
   if (!roomId || !text) return;
   const messagesCollectionRef = collection(db, 'rooms', roomId, 'messages');
@@ -283,12 +300,11 @@ export async function sendSystemMessage(text, roomId) {
   try {
     await addDoc(messagesCollectionRef, newMessage);
   } catch (error) {
-    console.error("فشل إرسال رسالة النظام:", error);
+    console.error("Failed to send system message:", error);
     throw error;
   }
 }
 
-// كاش المستخدمين والزوار
 let cachedUsersAndVisitors = null;
 let cachedUsersTimestamp = 0;
 const CACHE_DURATION = 60 * 1000;
@@ -342,7 +358,6 @@ export async function getAllUsersAndVisitors(forceRefresh = false) {
   return cachedUsersAndVisitors;
 }
 
-// جلب بيانات مستخدم/زائر
 export async function getUserData(userId) {
   try {
     const userRef = doc(db, 'users', userId);
@@ -358,55 +373,43 @@ export async function getUserData(userId) {
       return null;
     }
   } catch (error) {
-    console.error("خطأ في جلب بيانات المستخدم:", error);
+    console.error("Error getting user data:", error);
     return null;
   }
 }
-
-// متغير ثابت يمثل المستخدم النظام
-
 
 export async function updateUserData(userId, dataToUpdate) {
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
     if (!userDoc.exists()) {
-      console.error("المستخدم غير موجود.");
+      console.error("User not found.");
       return false;
     }
     const oldUserData = userDoc.data();
 
-    // فحص تغيير الاسم وإضافة الإشعار
-    // ...
-// فحص تغيير الاسم وإضافة الإشعار
-if (dataToUpdate.username !== undefined && dataToUpdate.username !== oldUserData.username) {
-    const notificationText = `تم تغيير اسمك من "${oldUserData.username}" إلى "${dataToUpdate.username}".`;
-    // إرسال الإشعار باسم النظام
-    await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
-}
-// ...
-// فحص تغيير الرتبة وإضافة الإشعار
-if (dataToUpdate.rank !== undefined && dataToUpdate.rank !== oldUserData.rank) {
-    const notificationText = `تهانينا! لقد تم ترقيتك إلى رتبة "${dataToUpdate.rank}".`;
-    // إرسال الإشعار باسم النظام
-    await addNotification(notificationText, SYSTEM_USER, userId); // إضافة userId
-}
-// ...
+    if (dataToUpdate.username !== undefined && dataToUpdate.username !== oldUserData.username) {
+      const notificationText = `تم تغيير اسمك من "${oldUserData.username}" إلى "${dataToUpdate.username}".`;
+      await addNotification(notificationText, SYSTEM_USER, userId);
+    }
+
+    if (dataToUpdate.rank !== undefined && dataToUpdate.rank !== oldUserData.rank) {
+      const notificationText = `تهانينا! لقد تم ترقيتك إلى رتبة "${dataToUpdate.rank}".`;
+      await addNotification(notificationText, SYSTEM_USER, userId);
+    }
 
     await updateDoc(userRef, dataToUpdate);
     console.log("User data updated successfully:", dataToUpdate);
-    // ... (بقية الكود)
     return true;
   } catch (error) {
-    console.error("خطأ في تحديث بيانات المستخدم/الزائر:", error);
+    console.error("Error updating user data:", error);
     return false;
   }
 }
 
-// تحديث مستوى المستخدم يدويًا (مسموح فقط للإدارة)
 export async function manuallyUpdateUserLevel(userId, newLevel) {
   if (newLevel < 1) {
-    console.error("المستوى الجديد يجب أن يكون أكبر من أو يساوي 1.");
+    console.error("Level must be at least 1.");
     return;
   }
   const userRef = doc(db, 'users', userId);
@@ -416,18 +419,16 @@ export async function manuallyUpdateUserLevel(userId, newLevel) {
       currentExp: 0,
       expToNextLevel: 200 + (newLevel * 100)
     });
-    console.log(`تم تحديث مستوى المستخدم ${userId} يدوياً إلى المستوى ${newLevel} بنجاح!`);
+    console.log(`User level updated to ${newLevel}!`);
   } catch (error) {
-    console.error("خطأ في تحديث المستوى يدوياً:", error);
+    console.error("Error updating level:", error);
   }
 }
 
-// توليد معرف المحادثة الخاصة
 export function getPrivateChatId(userId1, userId2) {
   return [userId1, userId2].sort().join('_');
 }
 
-// إرسال رسالة خاصة
 export async function sendPrivateMessage(senderId, senderName, senderAvatar, receiverId, messageText, quotedData = null) {
   if (!messageText || messageText.trim() === '') {
     return;
@@ -457,17 +458,16 @@ export async function sendPrivateMessage(senderId, senderName, senderAvatar, rec
       lastMessageTimestamp: serverTimestamp(),
       [unreadCounterField]: increment(1)
     }, { merge: true });
-    console.log(`تم إرسال رسالة خاصة في المحادثة ${chatId} بنجاح!`);
+    console.log(`Private message sent to ${chatId}!`);
   } catch (e) {
-    console.error('خطأ في إرسال الرسالة الخاصة: ', e);
-    alert('فشل إرسال الرسالة الخاصة.');
+    console.error('Error sending private message: ', e);
+    alert('Failed to send private message.');
   }
 }
 
-// الاستماع للرسائل الخاصة
 export function setupPrivateMessagesListener(currentUserId, targetUserId, messagesBoxElement, clearPrevious = true) {
   if (clearPrevious) {
-    messagesBoxElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">جاري تحميل الرسائل الخاصة...</div>';
+    messagesBoxElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Loading private messages...</div>';
   }
   const chatId = getPrivateChatId(currentUserId, targetUserId);
 
@@ -522,23 +522,17 @@ export function setupPrivateMessagesListener(currentUserId, targetUserId, messag
       }
     });
 
-    // **هذا هو التغيير الرئيسي:**
-    // قم باستدعاء الدالة مع currentUserId و targetUserId
     resetUnreadCount(currentUserId, targetUserId);
-
-    // تأكد من وجود هذه الدالة
     updatePrivateButtonNotification();
 
     messagesBoxElement.scrollTop = messagesBoxElement.scrollHeight;
   }, error => {
     console.error("Error getting private messages: ", error);
-    messagesBoxElement.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">فشل تحميل الرسائل الخاصة.</div>';
+    messagesBoxElement.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Failed to load private messages.</div>';
   });
   messagesBoxElement._privateChatUnsubscribe = unsubscribe;
 }
 
-
-// جلب جهات اتصال الدردشة الخاصة
 export async function getPrivateChatContacts(currentUserId) {
   const contacts = new Map();
   const chatDocs = [];
@@ -582,7 +576,6 @@ export async function getPrivateChatContacts(currentUserId) {
   return detailedContacts.filter(contact => contact !== null);
 }
 
-// الاستماع لإشعارات الرسائل الخاصة
 export function setupPrivateMessageNotificationListener(currentUserId) {
   if (!currentUserId) {
     console.warn('Cannot set up private message notification listener: User ID is missing.');
@@ -605,7 +598,6 @@ export function setupPrivateMessageNotificationListener(currentUserId) {
   });
 }
 
-// إعادة تعيين عداد الرسائل غير المقروءة
 export async function resetUnreadCount(currentUserId, targetUserId) {
   const chatId = getPrivateChatId(currentUserId, targetUserId);
   const privateChatRef = doc(db, 'privateChats', chatId);
@@ -614,13 +606,12 @@ export async function resetUnreadCount(currentUserId, targetUserId) {
     await updateDoc(privateChatRef, {
       [unreadCounterField]: 0
     });
-    console.log(`تم إعادة ضبط عداد الرسائل غير المقروءة للمستخدم ${currentUserId} في المحادثة ${chatId}.`);
+    console.log(`Unread count reset for user ${currentUserId} in chat ${chatId}.`);
   } catch (error) {
-    console.error('خطأ في إعادة ضبط العداد:', error);
+    console.error('Error resetting unread count:', error);
   }
 }
 
-// إرسال رسالة انضمام للغرفة
 export async function sendJoinMessage(roomId) {
   const currentUserName = localStorage.getItem('chatUserName');
   const currentUserId = localStorage.getItem('chatUserId');
@@ -628,7 +619,7 @@ export async function sendJoinMessage(roomId) {
   const currentUserRank = localStorage.getItem('chatUserRank') || 'زائر';
 
   if (!currentUserName || !currentUserId) {
-    console.error('لا يوجد اسم مستخدم أو معرف مستخدم مخزن لإرسال رسالة الانضمام.');
+    console.error('No user data found for join message.');
     return;
   }
 
@@ -645,23 +636,22 @@ export async function sendJoinMessage(roomId) {
   try {
     const messagesCol = collection(db, 'rooms', roomId, 'messages');
     await addDoc(messagesCol, joinMessage);
-    console.log('تم إرسال رسالة الانضمام بنجاح.');
+    console.log('Join message sent successfully.');
   } catch (e) {
-    console.error('خطأ في إرسال رسالة الانضمام: ', e);
+    console.error('Error sending join message: ', e);
   }
 }
 
-// حذف كل رسائل غرفة
 export async function deleteChatRoomMessages(roomId) {
   if (!roomId) {
-    console.error('خطأ: معرف الغرفة مفقود لحذف الرسائل.');
+    console.error('Room ID missing for message deletion.');
     return;
   }
   try {
     const chatRoomRef = collection(db, 'rooms', roomId, 'messages');
     const querySnapshot = await getDocs(chatRoomRef);
     if (querySnapshot.empty) {
-      console.log('لا توجد رسائل لحذفها في هذه الغرفة.');
+      console.log('No messages to delete in this room.');
       return;
     }
     const batch = writeBatch(db);
@@ -669,17 +659,16 @@ export async function deleteChatRoomMessages(roomId) {
       batch.delete(docSnap.ref);
     });
     await batch.commit();
-    console.log(`تم حذف جميع الرسائل من الغرفة: ${roomId}`);
+    console.log(`All messages deleted from room: ${roomId}`);
   } catch (error) {
-    console.error('فشل حذف رسائل الغرفة:', error);
+    console.error('Failed to delete room messages:', error);
     throw error;
   }
 }
 
-// إضافة إعجاب
 export async function addLike(likerId, likedUserId) {
   if (likerId === likedUserId) {
-    console.warn('لا يمكن للمستخدم الإعجاب بملفه الشخصي.');
+    console.warn('Cannot like your own profile.');
     return false;
   }
   const userRef = doc(db, 'users', likedUserId);
@@ -687,33 +676,28 @@ export async function addLike(likerId, likedUserId) {
     await updateDoc(userRef, {
       likes: arrayUnion(likerId)
     });
-    console.log(`تم الإعجاب بملف المستخدم ${likedUserId} بنجاح.`);
+    console.log(`Liked user ${likedUserId} successfully.`);
     return true;
   } catch (error) {
-    console.error('فشل إضافة الإعجاب:', error);
+    console.error('Failed to add like:', error);
     return false;
   }
 }
 
-// إزالة إعجاب
 export async function removeLike(likerId, likedUserId) {
   const userRef = doc(db, 'users', likedUserId);
   try {
     await updateDoc(userRef, {
       likes: arrayRemove(likerId)
     });
-    console.log(`تم إلغاء الإعجاب بملف المستخدم ${likedUserId} بنجاح.`);
+    console.log(`Unliked user ${likedUserId} successfully.`);
     return true;
   } catch (error) {
-    console.error('فشل إلغاء الإعجاب:', error);
+    console.error('Failed to remove like:', error);
     return false;
   }
 }
 
-// في مكان ما في ملفك، أضف هذ// في مكان ما في ملفك، أضف هذا المتغير الثابت
-// في ملف chat-firestore.js
-
-// تأكد من وجود كلمة 'export' قبل const
 export const SYSTEM_USER = {
     id: 'system',
     username: 'النظام',
@@ -721,15 +705,6 @@ export const SYSTEM_USER = {
     avatar: 'default_bot.png'
 };
 
-// ... (بقية الكود)
-
-// ...
-
-/**
- * يضيف إشعارًا جديدًا إلى مجموعة الإشعارات في Firestore.
- * @param {string} text - نص الإشعار.
- * @param {object} sender - كائن يحتوي على id و username للمرسل.
- */
 export async function addNotification(text, sender, recipientId) {
     try {
         await addDoc(collection(db, 'notifications'), {
@@ -738,10 +713,10 @@ export async function addNotification(text, sender, recipientId) {
             senderId: sender.id,
             senderName: sender.username,
             recipientId: recipientId,
-            read: false // أضف هذا السطر هنا
+            read: false
         });
-        console.log("تم إضافة إشعار بنجاح.");
+        console.log("Notification added successfully.");
     } catch (error) {
-        console.error("خطأ في إضافة الإشعار: ", error);
+        console.error("Error adding notification: ", error);
     }
 }

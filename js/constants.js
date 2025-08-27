@@ -1,5 +1,4 @@
-// js/constants.js
-
+// constants.js
 export const RANK_ORDER = [
   "المالك",
   "اونر اداري",
@@ -8,11 +7,11 @@ export const RANK_ORDER = [
   "مشرف",
   "سوبر ادمن",
   "ادمن",
-  "بريميوم",   // رتبة جديدة
-  "بلاتينيوم", // رتبة جديدة
-  "ملكي",     // رتبة جديدة
-  "ذهبي",     // رتبة جديدة
-  "برونزي",    // رتبة جديدة
+  "بريميوم",
+  "بلاتينيوم",
+  "ملكي",
+  "ذهبي",
+  "برونزي",
   "عضو",
   "زائر"
 ];
@@ -34,8 +33,6 @@ export const RANK_IMAGE_MAP = {
   "زائر": "rank_images/guest.png",
 };
 
-// تعريف الصلاحيات لكل رتبة
-// كل رتبة ستحدد الأزرار التي يجب أن تكون مرئية (true) أو مخفية (false) لها.
 export const RANK_PERMISSIONS = {
     "المالك": {
         canSeeReportButton: true,
@@ -66,31 +63,31 @@ export const RANK_PERMISSIONS = {
         canSeePrivateChatButton: true
     },
     "بريميوم": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "بلاتينيوم": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "ملكي": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "ذهبي": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "برونزي": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "عضو": {
-        canSeeReportButton: false, // لا يرى زر البلاغ
+        canSeeReportButton: false,
         canSeePrivateChatButton: true
     },
     "زائر": {
-        canSeeReportButton: false,    // لا يرى زر البلاغ
-        canSeePrivateChatButton: false // لا يرى زر الخاص
+        canSeeReportButton: false,
+        canSeePrivateChatButton: false
     }
 };
