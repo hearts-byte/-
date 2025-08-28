@@ -448,8 +448,8 @@ btn.onclick = async () => {
   transform: translate(-50%, -50%) scale(1);
 }
 .commands-modal {
-  width: 20vw; /* تم تعديل هذا السطر */
-  height: 30vh; /* تم تعديل هذا السطر */
+  width: 40vw; /* تم تعديل هذا السطر */
+  height: 50vh; /* تم تعديل هذا السطر */
   max-width: 1050px;
   max-height: 94vh;
   min-width: 340px;
@@ -582,8 +582,8 @@ btn.onclick = async () => {
 }
 @media (max-width: 900px) {
   .commands-modal {
-    width: 70vw; /* تم تعديل هذا السطر */
-    height: 70vh; /* تم تعديل هذا السطر */
+    width: 85vw; /* تم تعديل هذا السطر */
+    height: 85vh; /* تم تعديل هذا السطر */
     max-width: none;
     max-height: 99vh;
   }
