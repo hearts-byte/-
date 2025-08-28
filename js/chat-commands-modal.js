@@ -2,7 +2,8 @@
 import { RANK_ORDER, RANK_IMAGE_MAP } from './constants.js';
 import { db } from './firebase-config.js';
 import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
- 
+ import { addNotification, SYSTEM_USER } from './chat-firestore.js';
+
 // يمكن الحصول على رتبة المستخدم من التخزين المحلي
 // أو تمريرها كمعامل إذا كانت متاحة من مكان آخر.
 const currentUserRank = localStorage.getItem('chatUserRank') || 'زائر';
@@ -284,8 +285,12 @@ if (userPermissions) {
     btn.onclick = function() {
       const key = btn.getAttribute('data-modal');
       if (key === "change-rank") {
-        let html = `<div class="ranks-list">`;
+                let html = `<div class="ranks-list">`;
         for (const rank of RANK_ORDER) {
+          // الشرط الجديد: تجاهل رتبتي "مالك" و "زائر"
+          if (rank === 'المالك' || rank === 'زائر') {
+            continue;
+          }
           html += `
             <div class="rank-option" data-rank="${rank}">
               <img src="${RANK_IMAGE_MAP[rank] || ''}" alt="${rank}" class="rank-img">
@@ -308,25 +313,28 @@ if (userPermissions) {
                 let btn = document.createElement('button');
                 btn.className = 'btn-main btn-set-rank';
                 btn.textContent = 'تأكيد التغيير';
-                btn.onclick = async () => {
+btn.onclick = async () => {
     try {
         const userId = userData.id || userData.uid;
         if (!userId) {
             alert('لا يمكن تحديد المستخدم!');
             return;
         }
-        // تحديث الرتبة وحقل الإشارة للتحديث
+
+        // هنا يتم تحديث الرتبة في قاعدة البيانات
         await updateDoc(doc(db, "users", userId), { 
             rank: rank,
             needsRefresh: true
         });
- 
+
+        // ✨ الكود الجديد: يتم إرسال الإشعار قبل تحديث الصفحة وإغلاق المودال
+        const notificationText = `تم تغيير رتبتك أنت الان ${rank}`;
+        await addNotification(notificationText, SYSTEM_USER, userId);
+        
+        // الآن يتم تحديث الصفحة وإغلاق المودال
         if (typeof onRankChange === "function") onRankChange(rank);
         close();
-        
-        // لا تقم بإعادة تحميل الصفحة هنا!
-        // alert('تم تغيير الرتبة بنجاح. سيتم تحديث صفحة المستخدم الآخر.');
- 
+
     } catch (e) {
         alert('حصل خطأ أثناء تغيير الرتبة: ' + (e.message || e));
     }
@@ -440,8 +448,8 @@ if (userPermissions) {
   transform: translate(-50%, -50%) scale(1);
 }
 .commands-modal {
-  width: 80vw;
-  height: 88vh;
+  width: 20vw; /* تم تعديل هذا السطر */
+  height: 30vh; /* تم تعديل هذا السطر */
   max-width: 1050px;
   max-height: 94vh;
   min-width: 340px;
@@ -574,8 +582,8 @@ if (userPermissions) {
 }
 @media (max-width: 900px) {
   .commands-modal {
-    width: 99vw;
-    height: 99vh;
+    width: 70vw; /* تم تعديل هذا السطر */
+    height: 70vh; /* تم تعديل هذا السطر */
     max-width: none;
     max-height: 99vh;
   }
