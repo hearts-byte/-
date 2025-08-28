@@ -14,6 +14,7 @@ import { uploadFileToCloudinary } from './cloudinary-utils.js';
 import { db, auth } from './firebase-config.js'; // تأكد من استيراد db و auth
 import { doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+export let allUsersAndVisitorsData = [];
 let privateChatModal = null;
 let onlineUsersModal = null;
 let searchModal = null;
@@ -24,8 +25,12 @@ let cachedRooms = null;
 let currentRoomId;
 let messagesUnsubscriber = null;
 let isLoadingMoreMessages = false;
-export let allUsersAndVisitorsData = []; 
+// إضافة المتغيرات هنا لتعريفها عالميًا
+let chatUserId = null;
+let chatUserName = null;
+let chatUserAvatar = null;
 // js/main.js
+let userType = null;
 
 // js/main.js
  
@@ -553,52 +558,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadComponent("input-bar", "components/input-bar.html");
     await loadComponent("bottom-bar", "components/bottom-bar.html");
     
+    //js/main.js
+// ... (الكود السابق لا يتغير) ...
+
     try {
-    // عند الدخول للصفحة، اجلب بيانات كل المستخدمين والزوار (دون الاعتماد على الكاش)
-    window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
-} catch (error) {
-    console.error("خطأ في جلب البيانات الأولية للمستخدمين والزوار:", error);
-    const chatBox = document.querySelector('#chat-box .chat-box');
-    if (chatBox) {
-        chatBox.innerHTML = '<div style="text-align: center; color: red;">فشل تحميل بيانات المستخدمين.</div>';
-    } else {
-        document.body.innerHTML = '<div style="text-align: center; color: red; padding-top: 50px;">فشل في تحميل بيانات المستخدمين. يرجى التحقق من اتصالك وقواعد البيانات.</div>';
+        // عند الدخول للصفحة، اجلب بيانات كل المستخدمين والزوار
+        window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
+    } catch (error) {
+        console.error("خطأ في جلب البيانات الأولية للمستخدمين والزوار:", error);
+        const chatBox = document.querySelector('#chat-box .chat-box');
+        if (chatBox) {
+            chatBox.innerHTML = '<div style="text-align: center; color: red;">فشل تحميل بيانات المستخدمين. قد يكون هناك مشكلة في الاتصال.</div>';
+        }
     }
-    return;
-}
 
     // تحقق من وجود بيانات المستخدم في localStorage
     let chatUserId = localStorage.getItem('chatUserId');
     let chatUserName = localStorage.getItem('chatUserName');
     let chatUserAvatar = localStorage.getItem('chatUserAvatar');
     let userType = localStorage.getItem('userType');
-
-    if (chatUserId) {
-    // عدد المحاولات قبل تسجيل الخروج النهائي
-    let maxTries = 3;
-    let userData = null;
-    for (let tries = 0; tries < maxTries; tries++) {
-        try {
-            // جلب بيانات المستخدمين والزوار من قاعدة البيانات (forceRefresh)
-            window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
-            userData = window.allUsersAndVisitorsData.find(user => user.id === chatUserId);
-            if (userData) break; // وجد المستخدم، أوقف المحاولات
-        } catch (error) {
-            // إذا فشل الجلب بسبب الانترنت انتظر ثانية وأعد المحاولة
-            await new Promise(r => setTimeout(r, 1000));
-        }
-    }
-    if (!userData) {
-        // إذا لم يتم العثور على المستخدم بعد عدة محاولات، سجل خروج المستخدم
-        alert('لم يتم العثور على بيانات الحساب أو هناك مشكلة في الاتصال. سيتم إعادتك إلى صفحة التسجيل.');
-        localStorage.clear();
+    
+    // إذا لم يكن هناك معرف للمستخدم في localStorage، قم بإعادة التوجيه مرة واحدة فقط
+    if (!chatUserId) {
         window.location.href = 'index.html';
         return;
     }
-} else {
-    window.location.href = 'index.html';
-    return;
-}
+
+    // تحقق من وجود بيانات المستخدم في allUsersAndVisitorsData
+    const userData = window.allUsersAndVisitorsData?.find(user => user.id === chatUserId);
+
+    if (!userData) {
+        // إذا لم يتم العثور على بيانات المستخدم، أظهر رسالة تحذير في الواجهة
+        console.warn('لم يتم العثور على بيانات الحساب، ربما بسبب مشكلة في الاتصال.');
+        const chatBox = document.querySelector('#chat-box .chat-box');
+        if (chatBox) {
+            const warningMessage = document.createElement('div');
+            warningMessage.style.textAlign = 'center';
+            warningMessage.style.color = 'orange';
+            warningMessage.style.padding = '10px';
+            warningMessage.textContent = 'تحذير: قد تواجه بعض المشاكل بسبب ضعف الاتصال.';
+            chatBox.insertBefore(warningMessage, chatBox.firstChild);
+        }
+        // يمكننا السماح للمستخدم بالبقاء والاستمرار
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomIdFromUrl = urlParams.get('roomId');
@@ -615,6 +617,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.innerHTML = '<div style="text-align: center; color: red; padding-top: 50px;">خطأ: لم يتم العثور على عنصر "chat-container". تأكد من وجوده في ملف HTML (chat.html).</div>';
         return;
     }
+
+// ... (بقية الكود لا يتغير) ..
     try {
         await loadComponent("top-bar", "components/top-bar.html");
         const currentUserId = localStorage.getItem('chatUserId');
