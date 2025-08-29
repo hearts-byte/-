@@ -1220,12 +1220,15 @@ body {
 }
 
 .online-users-modal .user-main-info {
+    /* الخصائص الحالية */
     flex: 1 1 0%;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
     overflow: hidden;
+
+    /* التغييرات */
+    display: flex;
+    flex-direction: column; /* هذا هو التعديل الرئيسي */
+    justify-content: center;
 }
 
 .online-users-modal .user-name {
