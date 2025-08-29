@@ -1034,7 +1034,7 @@ export function showNotificationsModal() {
         const btnRect = notificationsBtn.getBoundingClientRect();
         const modalElement = window.notificationsModal;
         const modalWidth = 320;
-        const shiftLeft = -115;
+        const shiftLeft = -145;
 
         modalElement.style.top = `${btnRect.bottom + 10}px`;
         modalElement.style.left = `${btnRect.right - modalWidth - shiftLeft}px`;
@@ -1381,12 +1381,12 @@ function showAdminEditUserModal(userData) {
         changeNameBtn.onclick = async function() {
             const newName = prompt('أدخل الاسم الجديد:', userData.name || '');
             if (newName !== null && newName.trim()) {
-                await updateUserData(userData.id, { name: newName });
-                userData.name = newName;
+                await updateUserData(userData.id, { username: newName });
+                userData.username = newName;
                 const nameElem = document.querySelector('#adminEditUserModal .user-name-display');
                 if (nameElem) nameElem.textContent = newName;
                 const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
-                if (idx !== -1) window.allUsersAndVisitorsData[idx].name = newName;
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].username = newName;
             }
         };
     }
