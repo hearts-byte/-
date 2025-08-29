@@ -1200,47 +1200,34 @@ body {
 /* تنسيقات جديدة لنافذة المستخدمين المتصلين */
 
 /* عناصر المستخدمين الفردية */
+/* --- ضمان ثبات مكان الرتبة بجانب اسم المستخدم في مودال المتصلين --- */
 .online-users-modal .user-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 8px 20px;
-    border-bottom: 1px solid #f5f5f5; /* خط فاصل بين المستخدمين */
-    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #f5f5f5;
+    gap: 8px;
 }
 
-.online-users-modal .user-item:last-child {
-    border-bottom: none; /* إزالة الخط الفاصل للمستخدم الأخير */
-}
-
-.online-users-modal .user-item:hover {
-    background-color: #f9f9f9; /* تغيير الخلفية عند التحويم */
-}
-
-/* صورة الأفاتار الصغيرة للمستخدم */
 .online-users-modal .user-avatar-small {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     object-fit: cover;
-    margin-left: 10px; /* مسافة من اليسار (للنص) */
-    border: 1px solid #ddd;
-    flex-shrink: 0; /* منع الصورة من الانكماش */
+    margin-left: 10px;
+    flex-shrink: 0;
 }
 
-/* ------------------------------------------- */
-/* **الأنماط الجديدة والمعدلة هنا** */
-/* ------------------------------------------- */
-
-/* الحاوية التي تحتوي على الاسم والحالة */
-.online-users-modal .user-info-text {
+.online-users-modal .user-main-info {
+    flex: 1 1 0%;
+    min-width: 0;
     display: flex;
-    flex-direction: column; /* لترتيب الاسم والحالة فوق بعضهما */
-    flex-grow: 1; /* لتأخذ المساحة المتبقية */
+    flex-direction: column;
     justify-content: center;
-    margin-right: 10px; /* مسافة من أيقونة الرتبة */
+    overflow: hidden;
 }
 
-/* تفاصيل اسم المستخدم */
 .online-users-modal .user-name {
     font-weight: bold;
     color: #444;
@@ -1248,26 +1235,32 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 120px;
 }
 
-/* نمط حالة المستخدم */
 .online-users-modal .user-status {
-    font-size: 11px; /* حجم خط أصغر */
-    color: #888; /* لون أفتح */
-    margin-top: 2px; /* مسافة بسيطة من الأعلى */
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* نمط الرتبة (لا يحتاج لتعديل كبير، ولكن تأكد من وجوده) */
+.online-users-modal .user-rank-box {
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
 .online-users-modal .user-rank-image {
     width: 20px;
     height: 20px;
-    margin-right: 10px; /* مسافة من اليمين */
-    flex-shrink: 0; /* لمنعها من الانكماش */
+    object-fit: contain;
+    margin: 0;
 }
-
 
 /* نمط الرتبة */
 .online-users-modal .user-rank {
