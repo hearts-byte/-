@@ -1,5 +1,3 @@
-// js/cloudinary-utils.js
-
 const CLOUDINARY_CLOUD_NAME = 'dim8zh0fh';
 // قم بتعيين preset مختلف لكل نوع ملف إن لزم الأمر
 const CLOUDINARY_IMAGE_UPLOAD_PRESET = 'chat_app_profile_pics'; 
@@ -8,7 +6,7 @@ const CLOUDINARY_VIDEO_UPLOAD_PRESET = 'video_uploads'; // يمكنك تغيير
 /**
  * دالة لرفع ملف (صورة أو فيديو) إلى Cloudinary.
  * @param {File} file الملف المراد رفعه.
- * @param {function(number)} onProgress دالة لمعالجة تحديثات التقدم.
+ * @param {function(number)=} onProgress دالة لمعالجة تحديثات التقدم (اختيارية).
  * @returns {Promise<string>} رابط الملف بعد الرفع.
  */
 export function uploadFileToCloudinary(file, onProgress) {
@@ -60,7 +58,9 @@ export function uploadFileToCloudinary(file, onProgress) {
         xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) {
                 const percentComplete = (event.loaded / event.total) * 100;
-                onProgress(percentComplete);
+                if (typeof onProgress === 'function') {
+                    onProgress(percentComplete);
+                }
             }
         };
 

@@ -6,7 +6,7 @@ import { RANK_IMAGE_MAP } from './constants.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
 import { updateUserData, addLike, removeLike, SYSTEM_USER } from './chat-firestore.js';
 import { db, auth } from './firebase-config.js'; // تأكد من وجود هذا السطر
-
+import { showCommandsModal } from './chat-commands-modal.js';
 // --- Firebase Auth imports for password change modal ---
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { collection, query, orderBy, onSnapshot, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -15,7 +15,7 @@ import { collection, query, orderBy, onSnapshot, where, getDocs, writeBatch } fr
 // js/modals.js
 // ... (الاستيرادات)
 window.notificationsModalUnsubscribe = null;
-
+window.RANK_IMAGE_MAP = RANK_IMAGE_MAP; 
 // تعريف المتغيرات الرئيسية
 const currentUserId = localStorage.getItem('chatUserId');
 const notificationsBadge = document.getElementById('notifications-badge');
@@ -142,6 +142,26 @@ function createEditProfileModalHTML() {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+const viewProfileBtn = document.getElementById('view-profile-button');
+if (viewProfileBtn) {
+    viewProfileBtn.addEventListener('click', function() {
+        // أغلق مودال التعديل أولاً
+        window.hideEditProfileModal();
+        // بعد اختفائه، اعرض مودال عرض الملف الشخصي
+        setTimeout(() => {
+            const currentUserId = localStorage.getItem('chatUserId');
+            // ابحث عن بيانات المستخدم الحالي في جميع المستخدمين
+            let userData = null;
+            if (window.allUsersAndVisitorsData && Array.isArray(window.allUsersAndVisitorsData)) {
+                userData = window.allUsersAndVisitorsData.find(u => u.id === currentUserId);
+            }
+            if (userData) {
+                window.showViewProfileModal(userData, window.allUsersAndVisitorsData);
+            }
+        }, 220); // عدل الرقم إذا أردت حسب سرعة الإغلاق/الفتح
+    });
+}
 
     window.editProfileModal = document.getElementById('editProfileModal');
     window.editProfileCloseButton = window.editProfileModal ? window.editProfileModal.querySelector('.header-left-actions .close-profile-modal') : null;
@@ -358,7 +378,6 @@ window.updateEditProfileModalContent = async function(user) {
 document.addEventListener('DOMContentLoaded', createEditProfileModalHTML);
 
 // ---- مودال تغيير كلمة المرور الآمن مع Firebase Auth ----
-
 export const showChangePasswordModal = () => {
     let changePasswordModal = document.getElementById('changePasswordModal');
     if (!changePasswordModal) {
@@ -592,9 +611,11 @@ function createViewProfileModalHTML() {
             <div class="edit-profile-container">
                 <div class="header-section-new">
                     <img id="view-profile-modal-inner-image" src="images/Interior.png" alt="صورة خلفية المستخدم" class="inner-profile-background-image">
-                    <div class="header-left-actions">
-                        <span class="header-icon close-profile-modal"><i class="fas fa-times"></i></span>
-                    </div>
+                  <div class="header-left-actions" style="flex-direction: row-reverse;">
+    <span class="header-icon edit-profile-btn" style="display:none;"><i class="fas fa-edit"></i></span>
+    <span class="header-icon menu-profile-modal"><i class="fas fa-bars"></i></span>
+    <span class="header-icon close-profile-modal"><i class="fas fa-times"></i></span>
+</div>
                     <div class="header-right-profile">
                         <div class="user-main-section-wrapper">
                          <div class="likes-and-level">
@@ -666,6 +687,44 @@ function createViewProfileModalHTML() {
         closeButton.addEventListener('click', window.hideViewProfileModal);
     }
     
+    const menuBtn = window.g_viewProfileModal.querySelector('.menu-profile-modal');
+if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
+        // اجلب بيانات المستخدم المعروض حالياً
+        const currentProfileUserId = window.g_viewProfileModal.getAttribute('data-user-id');
+        let userData = null;
+        if (window.g_viewProfileModal._currentUserData) {
+            userData = window.g_viewProfileModal._currentUserData;
+        } else if (window.allUsersAndVisitorsData && currentProfileUserId) {
+            userData = window.allUsersAndVisitorsData.find(u => u.id === currentProfileUserId);
+        }
+        showCommandsModal(userData || {}, null);
+    });
+}
+
+const editBtn = window.g_viewProfileModal.querySelector('.edit-profile-btn');
+if (editBtn) {
+    editBtn.addEventListener('click', function() {
+        const mode = editBtn.getAttribute('data-edit-mode');
+        if (mode === 'self') {
+            // فتح مودال تعديل ملفك الشخصي
+            window.hideViewProfileModal();
+            setTimeout(() => {
+                if (!window.editProfileModal) createEditProfileModalHTML();
+                window.editProfileModal.classList.add('show');
+                if (window.updateEditProfileModalContent && window.g_viewProfileModal._currentUserData) {
+                    window.updateEditProfileModalContent(window.g_viewProfileModal._currentUserData);
+                }
+            }, 220);
+        } else if (mode === 'admin') {
+        console.log('زر القلم الإداري ضُغط');
+        window.hideViewProfileModal();
+        setTimeout(() => {
+            showAdminEditUserModal(window.g_viewProfileModal._currentUserData);
+        }, 220);
+    }
+});
+}
     // منطق التبويبات (Tabs)
     const tabButtons = window.g_viewProfileModal.querySelectorAll('.tabs-container .tab-button');
     const tabContents = window.g_viewProfileModal.querySelectorAll('.tab-content');
@@ -701,6 +760,9 @@ window.showViewProfileModal = function(userData, allUsersAndVisitorsData) {
     if (!window.g_viewProfileModal) {
         createViewProfileModalHTML();
     }
+
+window.g_viewProfileModal._currentUserData = userData;
+window.g_viewProfileModal.setAttribute('data-user-id', userData.id || '');
 
     const targetUser = allUsersAndVisitorsData.find(user => user.id === userData.id);
 
@@ -813,6 +875,64 @@ window.showViewProfileModal = function(userData, allUsersAndVisitorsData) {
         console.error('بيانات المستخدم غير موجودة للعرض.');
         return;
     }
+
+    // كود إخفاء زر الثلاثة خطوط إذا الملف المعروض هو حسابي
+    const menuBtn = window.g_viewProfileModal.querySelector('.menu-profile-modal');
+    const currentUserId = localStorage.getItem('chatUserId');
+    if (menuBtn) {
+        if (userData.id === currentUserId) {
+            menuBtn.style.display = "none";
+        } else {
+            menuBtn.style.display = "";
+        }
+    }
+
+// جلب زر القلم
+// تعريف دالة مقارنة الرتب
+function isMyRankHigher(myRank, targetRank) {
+    const order = [
+        "المالك",
+        "اونر اداري",
+        "اونر",
+        "سوبر اداري",
+        "مشرف",
+        "سوبر ادمن",
+        "ادمن",
+        "بريميوم",
+        "بلاتينيوم",
+        "ملكي",
+        "ذهبي",
+        "برونزي",
+        "عضو",
+        "زائر"
+    ];
+    const myIndex = order.indexOf(myRank);
+    const targetIndex = order.indexOf(targetRank);
+    // الأقل في الفهرس = أعلى رتبة
+    return myIndex !== -1 && targetIndex !== -1 && myIndex < targetIndex;
+}
+
+// جلب زر القلم
+const editBtn = window.g_viewProfileModal.querySelector('.edit-profile-btn');
+const currentUserData = allUsersAndVisitorsData.find(u => u.id === currentUserId) || {};
+
+if (editBtn) {
+    if (userData.id === currentUserId) {
+        // ملفي الشخصي (زر التعديل العادي)
+        editBtn.style.display = "";
+        editBtn.setAttribute('data-edit-mode', 'self');
+    } else if (
+        (currentUserData.rank === "المالك" || currentUserData.rank === "اونر اداري") &&
+        isMyRankHigher(currentUserData.rank, userData.rank)
+    ) {
+        // أنا مالك أو اونر اداري ورُتبتي أعلى من العضو المعروض
+        editBtn.style.display = "";
+        editBtn.setAttribute('data-edit-mode', 'admin');
+    } else {
+        editBtn.style.display = "none";
+        editBtn.removeAttribute('data-edit-mode');
+    }
+}
 
     window.g_viewProfileModal.classList.add('show');
     document.addEventListener('click', window.handleViewProfileModalOutsideClick);
@@ -1068,3 +1188,255 @@ export function listenForUnreadNotifications() {
 document.addEventListener('DOMContentLoaded', () => {
     listenForUnreadNotifications();
 });
+
+function showAdminEditUserModal(userData) {
+    // إزالة أي مودال إداري قديم
+    let adminModal = document.getElementById('adminEditUserModal');
+    if (adminModal) adminModal.remove();
+
+    // بناء المودال
+    const modalHTML = `
+    <div id="adminEditUserModal" class="modal-overlay show">
+      <div class="edit-profile-container">
+        <div class="header-section-new">
+          <img src="${userData.innerImage || 'images/Interior.png'}" class="inner-profile-background-image" alt="" />
+          <input type="file" id="admin-inner-image-upload" accept="image/*" style="display:none;">
+          <input type="file" id="admin-avatar-upload" accept="image/*" style="display:none;">
+          <div class="header-left-actions">
+            <span class="header-icon close-profile-modal"><i class="fas fa-times"></i></span>
+            <span class="header-icon change-inner-image"><i class="fas fa-camera"></i></span>
+            <span class="header-icon delete-inner-image"><i class="fas fa-trash-alt"></i></span>
+          </div>
+          <div class="header-right-profile">
+            <div class="user-main-section-wrapper">
+              <div class="user-main-info">
+                <div class="user-avatar-wrapper" style="position:relative;">
+                  <img id="admin-user-avatar" src="${userData.avatar || 'images/default-user.png'}" alt="صورة المستخدم" />
+                  <div class="avatar-overlay-buttons" style="position:absolute;right:0;bottom:0;">
+                    <span class="camera-overlay" style="cursor:pointer;"><i class="fas fa-camera"></i></span>
+                    <span class="trash-overlay" style="cursor:pointer;"><i class="fas fa-trash-alt"></i></span>
+                  </div>
+                </div>
+                <div class="user-info-section">
+                  <div class="user-details">
+                    <div class="user-rank-container">
+                      <div class="rank-info">
+                        <img src="${window.RANK_IMAGE_MAP && window.RANK_IMAGE_MAP[userData.rank] ? window.RANK_IMAGE_MAP[userData.rank] : 'images/default-rank.png'}" class="rank-image" alt="صورة الرتبة" />
+                        <p class="user-rank">${userData.rank || ""}</p>
+                      </div>
+                    </div>
+                    <div class="user-name-container">
+                      <p class="user-name-display">${userData.name || ""}</p>
+                    </div>
+                    <p class="user-status-display">${userData.statusText || ""}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="admin-actions-container" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+          <button class="admin-action-btn" id="admin-change-status-btn"><i class="fas fa-pen"></i> تغيير الحالة</button>
+          <button class="admin-action-btn" id="admin-change-name-btn"><i class="fas fa-user-edit"></i> تغيير الاسم</button>
+          <button class="admin-action-btn" id="admin-change-password-btn"><i class="fas fa-key"></i> تغيير كلمة المرور</button>
+          <button class="admin-action-btn" id="admin-change-email-btn"><i class="fas fa-envelope"></i> تغيير البريد الإلكتروني</button>
+          <button class="admin-action-btn" id="admin-change-rank-btn"><i class="fas fa-user-shield"></i> تغيير الرتبة</button>
+        </div>
+      </div>
+    </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // زر الإغلاق
+    document.querySelector("#adminEditUserModal .close-profile-modal").onclick = function() {
+      document.getElementById('adminEditUserModal').remove();
+    };
+
+    // عناصر الإدخال
+    const innerImageUploadInput = document.getElementById('admin-inner-image-upload');
+    const avatarUploadInput = document.getElementById('admin-avatar-upload');
+    const changeInnerImageBtn = document.querySelector('#adminEditUserModal .change-inner-image');
+    const deleteInnerImageBtn = document.querySelector('#adminEditUserModal .delete-inner-image');
+    const changeAvatarBtn = document.querySelector('#adminEditUserModal .avatar-overlay-buttons .camera-overlay');
+    const deleteAvatarBtn = document.querySelector('#adminEditUserModal .avatar-overlay-buttons .trash-overlay');
+
+    // زر رفع صورة البروفايل
+    if (changeAvatarBtn) changeAvatarBtn.addEventListener('click', () => { avatarUploadInput.click(); });
+
+    // زر رفع الصورة الداخلية
+    if (changeInnerImageBtn) changeInnerImageBtn.addEventListener('click', () => { innerImageUploadInput.click(); });
+
+    // حذف الصورة الداخلية
+    if (deleteInnerImageBtn) {
+        deleteInnerImageBtn.addEventListener('click', async () => {
+            const defaultInnerImage = 'images/Interior.png';
+            await updateUserData(userData.id, { innerImage: defaultInnerImage });
+            const innerImageElement = document.querySelector('#adminEditUserModal .inner-profile-background-image');
+            if (innerImageElement) innerImageElement.src = defaultInnerImage;
+            userData.innerImage = defaultInnerImage;
+            if (window.allUsersAndVisitorsData && Array.isArray(window.allUsersAndVisitorsData)) {
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].innerImage = defaultInnerImage;
+            }
+        });
+    }
+
+    // حذف صورة البروفايل
+    if (deleteAvatarBtn) {
+        deleteAvatarBtn.addEventListener('click', async () => {
+            const defaultAvatar = 'images/default-user.png';
+            await updateUserData(userData.id, { avatar: defaultAvatar });
+            const avatarImg = document.getElementById('admin-user-avatar');
+            if (avatarImg) avatarImg.src = defaultAvatar;
+            userData.avatar = defaultAvatar;
+            if (window.allUsersAndVisitorsData && Array.isArray(window.allUsersAndVisitorsData)) {
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].avatar = defaultAvatar;
+            }
+        });
+    }
+
+    // رفع صورة داخلية
+    if (innerImageUploadInput) {
+        innerImageUploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                showLoadingSpinner(deleteInnerImageBtn);
+                try {
+                    const compressedFile = await compressImage(file, 0.7);
+                    const imageUrl = await uploadFileToCloudinary(compressedFile);
+                    if (imageUrl) {
+                        await updateUserData(userData.id, { innerImage: imageUrl });
+                        const innerImageElement = document.querySelector('#adminEditUserModal .inner-profile-background-image');
+                        if (innerImageElement) innerImageElement.src = imageUrl;
+                        userData.innerImage = imageUrl;
+                        if (window.allUsersAndVisitorsData && Array.isArray(window.allUsersAndVisitorsData)) {
+                            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                            if (idx !== -1) window.allUsersAndVisitorsData[idx].innerImage = imageUrl;
+                        }
+                    } else {
+                        alert('فشل رفع الصورة الداخلية.');
+                    }
+                } catch (error) {
+                    console.error('فشل رفع الصورة الداخلية:', error);
+                    alert('حدث خطأ أثناء رفع الصورة الداخلية.');
+                } finally {
+                    hideLoadingSpinner(deleteInnerImageBtn);
+                }
+            }
+            event.target.value = '';
+        });
+    }
+
+    // رفع صورة البروفايل
+    if (avatarUploadInput) {
+        avatarUploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                showLoadingSpinner(deleteAvatarBtn);
+                try {
+                    const compressedFile = await compressImage(file, 0.7);
+                    const imageUrl = await uploadFileToCloudinary(compressedFile);
+                    if (imageUrl) {
+                        await updateUserData(userData.id, { avatar: imageUrl });
+                        const avatarImg = document.getElementById('admin-user-avatar');
+                        if (avatarImg) avatarImg.src = imageUrl;
+                        userData.avatar = imageUrl;
+                        if (window.allUsersAndVisitorsData && Array.isArray(window.allUsersAndVisitorsData)) {
+                            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                            if (idx !== -1) window.allUsersAndVisitorsData[idx].avatar = imageUrl;
+                        }
+                    } else {
+                        alert('فشل رفع صورة البروفايل.');
+                    }
+                } catch (error) {
+                    console.error('فشل رفع صورة البروفايل:', error);
+                    alert('حدث خطأ أثناء رفع صورة البروفايل.');
+                } finally {
+                    hideLoadingSpinner(deleteAvatarBtn);
+                }
+            }
+            event.target.value = '';
+        });
+    }
+
+    // أزرار الإدارة: تحديث البيانات مباشرة
+    const changeStatusBtn = document.getElementById('admin-change-status-btn');
+    if (changeStatusBtn) {
+        changeStatusBtn.onclick = async function() {
+            const newStatus = prompt('أدخل الحالة الجديدة:', userData.statusText || '');
+            if (newStatus !== null) {
+                await updateUserData(userData.id, { statusText: newStatus });
+                userData.statusText = newStatus;
+                const statusElem = document.querySelector('#adminEditUserModal .user-status-display');
+                if (statusElem) statusElem.textContent = newStatus;
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].statusText = newStatus;
+            }
+        };
+    }
+
+    const changeNameBtn = document.getElementById('admin-change-name-btn');
+    if (changeNameBtn) {
+        changeNameBtn.onclick = async function() {
+            const newName = prompt('أدخل الاسم الجديد:', userData.name || '');
+            if (newName !== null && newName.trim()) {
+                await updateUserData(userData.id, { name: newName });
+                userData.name = newName;
+                const nameElem = document.querySelector('#adminEditUserModal .user-name-display');
+                if (nameElem) nameElem.textContent = newName;
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].name = newName;
+            }
+        };
+    }
+
+    const changePasswordBtn = document.getElementById('admin-change-password-btn');
+    if (changePasswordBtn) {
+        changePasswordBtn.onclick = async function() {
+            const newPass = prompt('أدخل كلمة المرور الجديدة:');
+            if (newPass !== null && newPass.trim()) {
+                await updateUserData(userData.id, { password: newPass });
+                alert('تم تغيير كلمة المرور بنجاح.');
+            }
+        };
+    }
+
+    const changeEmailBtn = document.getElementById('admin-change-email-btn');
+    if (changeEmailBtn) {
+        changeEmailBtn.onclick = async function() {
+            const newEmail = prompt('أدخل البريد الإلكتروني الجديد:', userData.email || '');
+            if (newEmail !== null && newEmail.trim()) {
+                await updateUserData(userData.id, { email: newEmail });
+                userData.email = newEmail;
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].email = newEmail;
+            }
+        };
+    }
+
+    const changeRankBtn = document.getElementById('admin-change-rank-btn');
+    if (changeRankBtn) {
+        changeRankBtn.onclick = async function() {
+            const ranks = [
+                "المالك", "اونر اداري", "اونر", "سوبر اداري", "مشرف", "سوبر ادمن", "ادمن",
+                "بريميوم", "بلاتينيوم", "ملكي", "ذهبي", "برونزي", "عضو", "زائر"
+            ];
+            const newRank = prompt(
+                "اختر رقم الرتبة الجديدة:\n" + ranks.map((r, i) => `${i + 1}- ${r}`).join('\n')
+            );
+            const idxRank = parseInt(newRank) - 1;
+            if (idxRank >= 0 && idxRank < ranks.length) {
+                const selectedRank = ranks[idxRank];
+                await updateUserData(userData.id, { rank: selectedRank });
+                userData.rank = selectedRank;
+                const rankImg = document.querySelector('#adminEditUserModal .rank-image');
+                if (rankImg) rankImg.src = window.RANK_IMAGE_MAP && window.RANK_IMAGE_MAP[selectedRank] ? window.RANK_IMAGE_MAP[selectedRank] : 'images/default-rank.png';
+                const rankTxt = document.querySelector('#adminEditUserModal .user-rank');
+                if (rankTxt) rankTxt.textContent = selectedRank;
+                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+                if (idx !== -1) window.allUsersAndVisitorsData[idx].rank = selectedRank;
+            }
+        };
+    }
+}

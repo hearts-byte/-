@@ -188,7 +188,7 @@ export async function updateUserExperience(userId) {
         level++;
         currentExp = currentExp - expToNextLevel;
         expToNextLevel = 200 + (level * 100);
-        const notificationText = `تهانينا، لقد ارتفع مستواك إلى المستوى ${level}!`;
+        const notificationText = `رائع! لقد وصلت إلى مستوى الخبرة  ${level}!`;
         await addNotification(notificationText, SYSTEM_USER, userId);
       }
 

@@ -338,24 +338,27 @@ async function fetchAndDisplayOnlineUsers(modalContentArea, currentUserName) {
                 usersInRank.sort((a, b) => a.name.localeCompare(b.name));
                 usersInRank.forEach(user => {
                     const userItemDiv = document.createElement('div');
-                    userItemDiv.classList.add('user-item');
-                    const rankImageSrc = RANK_IMAGE_MAP[user.rank] || RANK_IMAGE_MAP['default'];
-                    userItemDiv.innerHTML = `
-                        <img src="${user.avatar || 'images/default-user.png'}" alt="${user.name}" class="user-avatar-small">
-                        <div class="user-info-text">
-                            <span class="user-name">${user.name}</span>
-                            <p class="user-status">${user.statusText || ''}</p>
-                        </div>
-                        <img src="${rankImageSrc}" alt="${user.rank}" class="user-rank-image" title="${user.rank}" />
-                    `;
-                    const userAvatarElement = userItemDiv.querySelector('.user-avatar-small');
-                    if (userAvatarElement) {
-                        userAvatarElement.addEventListener('click', (event) => {
-                            event.stopPropagation();
-                            createUserInfoModal(userAvatarElement, user, window.allUsersAndVisitorsData);
-                        });
-                    }
-                    onlineUsersList.appendChild(userItemDiv);
+userItemDiv.classList.add('user-item');
+const rankImageSrc = RANK_IMAGE_MAP[user.rank] || RANK_IMAGE_MAP['default'];
+userItemDiv.innerHTML = `
+    <img src="${user.avatar || 'images/default-user.png'}" alt="${user.name}" class="user-avatar-small">
+    <div class="user-main-info">
+        <span class="user-name">${user.name}</span>
+        <span class="user-status">${user.statusText || ''}</span>
+    </div>
+    <div class="user-rank-box">
+        <img src="${rankImageSrc}" alt="${user.rank}" class="user-rank-image" title="${user.rank}" />
+    </div>
+`;
+
+const userAvatarElement = userItemDiv.querySelector('.user-avatar-small');
+if (userAvatarElement) {
+    userAvatarElement.addEventListener('click', (event) => {
+        event.stopPropagation();
+        createUserInfoModal(userAvatarElement, user, window.allUsersAndVisitorsData);
+    });
+}
+onlineUsersList.appendChild(userItemDiv);
                 });
             }
         });
@@ -450,20 +453,25 @@ function showSearchInterface(modalContentArea) {
                 filteredUsers.forEach(user => {
                     const userItemDiv = document.createElement('div');
                     userItemDiv.classList.add('user-item');
-                    const rankImageSrc = RANK_IMAGE_MAP[user.rank] || RANK_IMAGE_MAP['default'];
-                    userItemDiv.innerHTML = `
-                        <img src="${user.avatar || 'images/default-user.png'}" alt="${user.name}" class="user-avatar-small">
-                        <span class="user-name">${user.name}</span>
-                        <img src="${rankImageSrc}" alt="${user.rank}" class="user-rank-image" title="${user.rank}" />
-                    `;
-                    const userAvatarElement = userItemDiv.querySelector('.user-avatar-small');
-                    if (userAvatarElement) {
-                        userAvatarElement.addEventListener('click', (event) => {
-                            event.stopPropagation();
-                            createUserInfoModal(userAvatarElement, user);
-                        });
-                    }
-                    searchResultsList.appendChild(userItemDiv);
+const rankImageSrc = RANK_IMAGE_MAP[user.rank] || RANK_IMAGE_MAP['default'];
+userItemDiv.innerHTML = `
+    <img src="${user.avatar || 'images/default-user.png'}" alt="${user.name}" class="user-avatar-small">
+    <div class="user-main-info">
+        <span class="user-name">${user.name}</span>
+        <span class="user-status">${user.statusText || ''}</span>
+    </div>
+    <div class="user-rank-box">
+        <img src="${rankImageSrc}" alt="${user.rank}" class="user-rank-image" title="${user.rank}" />
+    </div>
+`;
+const userAvatarElement = userItemDiv.querySelector('.user-avatar-small');
+if (userAvatarElement) {
+    userAvatarElement.addEventListener('click', (event) => {
+        event.stopPropagation();
+        createUserInfoModal(userAvatarElement, user, window.allUsersAndVisitorsData);
+    });
+}
+searchResultsList.appendChild(userItemDiv);
                 });
             }
         } catch (error) {
