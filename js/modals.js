@@ -317,13 +317,6 @@ window.hideEditProfileModal = function() {
     }
 };
 
-window.handleEditProfileModalOutsideClick = function(event) {
-    const editProfileButton = document.getElementById('editProfileButton');
-    if (window.editProfileModal && !window.editProfileModal.contains(event.target) && event.target !== editProfileButton) {
-        window.hideEditProfileModal();
-    }
-};
-
 window.updateEditProfileModalContent = async function(user) {
     if (!window.editProfileModal) {
         console.warn("Edit Profile Modal not yet created when trying to update content.");

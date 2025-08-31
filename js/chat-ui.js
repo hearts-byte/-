@@ -1,5 +1,15 @@
 import { getPrivateChatId, sendPrivateMessage, setupPrivateMessagesListener } from './chat-firestore.js';
-import { db, serverTimestamp } from './firebase-config.js';
+import { db, serverTimestamp, auth } from './firebase-config.js';
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  limit
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showCommandsModal } from './chat-commands-modal.js';
 
@@ -749,3 +759,207 @@ export function showImageInModal(imageUrl) {
   }
 }
 
+// دالة لإضافة زر التسجيل في الشريط السفلي للزوار
+// دالة لإضافة زر التسجيل في الشريط السفلي للزوار
+// في ملف js/chat-ui.js
+// ... (بقية الكود السابق)
+
+export function addRegistrationButtonToBottomBar(userRank) {
+    const bottomBar = document.querySelector('.bottom-bar');
+    const existingBtn = document.querySelector('.bottom-bar .registration-btn');
+
+    if (userRank === 'زائر') {
+        if (!existingBtn) {
+            const registerButton = document.createElement('button');
+            registerButton.classList.add('registration-btn');
+            registerButton.classList.add('bottom-bar-btn');
+
+            registerButton.innerHTML = `
+                <i class="icon fa fa-pen"></i>
+                <span class="btn-text">تسجيل</span>
+            `;
+
+            registerButton.addEventListener('click', () => {
+                // ✨ استبدال alert() باستدعاء دالتنا الجديدة
+                showRegistrationModal();
+            });
+
+            bottomBar.appendChild(registerButton);
+        }
+    } else {
+        if (existingBtn) {
+            existingBtn.remove();
+        }
+    }
+}
+
+
+// في ملف js/chat-ui.js
+// في ملف js/chat-ui.js
+
+export const registerModalHTML = `
+<div class="registration-modal-content">
+  <span class="close-button">&times;</span>
+  <h2>تسجيل مستخدم جديد</h2>
+  <form id="registrationForm">
+    <div class="form-group">
+      <label for="reg-username">اسم المستخدم:</label>
+      <input type="text" id="reg-username" name="username" required>
+    </div>
+    <div class="form-group">
+      <label for="reg-password">كلمة المرور:</label>
+      <input type="password" id="reg-password" name="password" required>
+    </div>
+    <div class="form-group">
+      <label for="reg-email">البريد الإلكتروني:</label>
+      <input type="email" id="reg-email" name="email" required>
+    </div>
+    <button type="submit" class="register-submit-btn">
+      <i class="fas fa-user-plus"></i> تسجيل
+    </button>
+  </form>
+</div>
+`;
+
+let registrationModal = null;
+
+
+// في ملف js/chat-ui.js
+// ... (بقية الكود السابق)
+
+// في ملف js/chat-ui.js
+// ... (بقية الكود)
+
+export function showRegistrationModal() {
+  if (registrationModal) {
+    registrationModal.remove();
+  }
+
+  registrationModal = document.createElement('div');
+  registrationModal.classList.add('registration-modal');
+  registrationModal.innerHTML = registerModalHTML;
+  document.body.appendChild(registrationModal);
+  
+  setTimeout(() => {
+    registrationModal.classList.add('show');
+  }, 10);
+
+  const currentUserName = localStorage.getItem('chatUserName');
+  const usernameInput = registrationModal.querySelector('#reg-username');
+  const emailInput = registrationModal.querySelector('#reg-email');
+
+  if (usernameInput && currentUserName) {
+    usernameInput.value = currentUserName;
+    const sanitizedName = currentUserName.toLowerCase().replace(/\s/g, '');
+    const defaultEmail = `${sanitizedName}@example.com`;
+    emailInput.value = defaultEmail;
+  }
+
+  registrationModal.querySelector('.close-button').addEventListener('click', () => {
+    hideRegistrationModal();
+  });
+
+  registrationModal.addEventListener('click', (event) => {
+    if (event.target === registrationModal) {
+      hideRegistrationModal();
+    }
+  });
+
+  // ✨ ربط النموذج بالدالة الجديدة
+  registrationModal.querySelector('#registrationForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const username = registrationModal.querySelector('#reg-username').value.trim();
+    const email = registrationModal.querySelector('#reg-email').value.trim();
+    const password = registrationModal.querySelector('#reg-password').value;
+
+    if (!username || !email || !password) {
+      alert('يرجى ملء جميع الحقول.');
+      return;
+    }
+
+    // استدعاء الدالة الجديدة للتعامل مع التسجيل
+    await handleRegistration(username, email, password);
+    hideRegistrationModal();
+  });
+}
+
+// ... (بقية الدوال)
+export function hideRegistrationModal() {
+  if (registrationModal) {
+    registrationModal.classList.remove('show');
+    registrationModal.addEventListener('transitionend', () => {
+      if (registrationModal) {
+        registrationModal.remove();
+        registrationModal = null;
+      }
+    }, { once: true });
+  }
+}
+
+// في ملف js/chat-ui.js
+// ... (الاستيرادات والدوال الموجودة)
+
+
+// دالة التحقق من تكرار اسم المستخدم
+async function isUsernameTaken(username) {
+  const usersQuery = query(
+    collection(db, 'users'),
+    where('username', '==', username),
+    limit(1)
+  );
+  const userSnapshot = await getDocs(usersQuery);
+  if (!userSnapshot.empty) return true;
+  return false;
+}
+
+// ✨ الدالة الجديدة للتعامل مع التسجيل
+export async function handleRegistration(registerName, registerEmail, registerPassword) {
+  const DEFAULT_USER_AVATAR = 'images/default-user.png';
+  const userRank = 'عضو';
+
+  try {
+    if (await isUsernameTaken(registerName)) {
+      alert('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.'); // يمكنك استبدالها بدالة عرض رسالة أفضل
+      return;
+    }
+
+    const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+    const userId = userCredential.user.uid;
+
+    await setDoc(doc(db, 'users', userId), {
+      username: registerName,
+      email: registerEmail,
+      timestamp: serverTimestamp(),
+      userType: 'registered',
+      avatar: DEFAULT_USER_AVATAR,
+      rank: userRank,
+      level: 1,
+      totalExp: 0,
+      currentExp: 0,
+      expToNextLevel: 200,
+      likes: []
+    });
+
+    localStorage.setItem('chatUserName', registerName);
+    localStorage.setItem('userType', 'registered');
+    localStorage.setItem('chatUserId', userId);
+    localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
+    localStorage.setItem('chatUserRank', userRank);
+
+    // ✨ نقل المستخدم إلى صفحة الدردشة مباشرةً بعد التسجيل
+    localStorage.setItem('fromRegistrationPage', 'true');
+    window.location.href = 'chat.html'; // أو 'rooms.html' حسب ما تفضله
+
+  } catch (error) {
+    console.error("خطأ أثناء تسجيل الحساب:", error);
+    if (error.code === 'auth/email-already-in-use') {
+      alert('هذا البريد الإلكتروني مرتبط بحساب آخر بالفعل.');
+    } else if (error.code === 'auth/weak-password') {
+      alert('كلمة المرور ضعيفة. يجب أن تحتوي على 6 أحرف على الأقل.');
+    } else if (error.code === 'auth/invalid-email') {
+      alert('صيغة البريد الإلكتروني غير صحيحة.');
+    } else {
+      alert('حدث خطأ غير متوقع أثناء التسجيل. يرجى إعادة المحاولة.');
+    }
+  }
+}

@@ -2,7 +2,7 @@
 // الكود الصحيح
 import { 
     loadComponent, createAndShowPrivateChatDialog, createUserInfoModal, updatePrivateButtonNotification, hideUserInfoModal, checkAndSendJoinMessage, 
-    createSystemMessageElement, createMessageElement 
+    createSystemMessageElement, createMessageElement, addRegistrationButtonToBottomBar 
 } from './chat-ui.js';
 import { 
     loadInitialMessages, loadMoreMessages, listenForNewMessages,
@@ -771,6 +771,7 @@ messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
 
 listenForUserRankChanges();
 
+addRegistrationButtonToBottomBar(currentUserRank); // قم بتمرير الرتبة هنا
 // --- تحميل المزيد عند التمرير للأعلى ---
 let isLoadingMoreMessages = false;
 const chatBox = document.querySelector('#chat-box .chat-box');
@@ -999,20 +1000,35 @@ if (currentUserId) {
             await sendSystemMessage(confirmationMessage, currentRoomId);
             
             messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
-                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
-                if (!msgData.isSystemMessage) {
-                    msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
-                    msgData.senderRank = senderData?.rank || 'زائر';
-                    msgData.level = senderData?.level || 1;
-                }
-                const elem = msgData.isSystemMessage ?
-                    createSystemMessageElement(msgData.text) :
-                    createMessageElement(msgData);
-                chatBox.appendChild(elem);
-                setTimeout(() => {
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }, 100);
-            });
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    
+    // --- هنا ضع شرط التنظيف أول شيء ---
+    if (msgData.isSystemMessage && msgData.text.includes("تم تنظيف الغرفة")) {
+        chatBox.innerHTML = '';
+        // أضف رسالة النظام بعد التفريغ
+        const elem = createSystemMessageElement(msgData.text);
+        chatBox.appendChild(elem);
+        setTimeout(() => {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 100);
+        return;
+    }
+    // --- نهاية شرط التنظيف ---
+
+    const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+    if (!msgData.isSystemMessage) {
+        msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+        msgData.senderRank = senderData?.rank || 'زائر';
+        msgData.level = senderData?.level || 1;
+    }
+    const elem = msgData.isSystemMessage ?
+        createSystemMessageElement(msgData.text) :
+        createMessageElement(msgData);
+    chatBox.appendChild(elem);
+    setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 100);
+});
 
         } catch (error) {
             alert('فشل تنظيف الدردشة. ليس لديك الصلاحية لفعل ذلك.');
