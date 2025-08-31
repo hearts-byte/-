@@ -2691,3 +2691,148 @@ vertical-align: middle;
     font-size: 0.98em;
     min-height: 18px;
 }
+
+/* تنسيقات الأزرار في الشريط السفلي لتشابه الأزرار العلوية */
+.bottom-bar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+    background: none; /* إزالة لون الخلفية الافتراضي للزر */
+    border: none; /* إزالة حدود الزر */
+}
+
+.bottom-bar-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.bottom-bar-btn .icon {
+    font-size: 20px;
+    margin-bottom: 3px;
+    color: #fff; /* لون الأيقونة */
+}
+
+.bottom-bar-btn .btn-text {
+    font-size: 10px;
+    color: #fff; /* لون النص */
+    white-space: nowrap;
+}
+
+/* تنسيقات المودال */
+.registration-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  /* جعل الخلفية شفافة أو بلون خفيف لتركيز المستخدم على المودال */
+  background-color: rgba(0, 0, 0, 0.4); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  padding: 20px; /* إضافة هامش خارجي على المودال نفسه */
+  box-sizing: border-box; /* لضمان أن الـ padding لا يزيد العرض الكلي */
+}
+
+.registration-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.registration-modal-content {
+  /* تغيير الخلفية للون الأبيض */
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+  /* تغيير لون الظل ليتناسب مع الخلفية الفاتحة */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
+  transform: translateY(-20px);
+  transition: transform 0.3s ease;
+  /* تغيير لون النص للون الداكن ليظهر على الخلفية البيضاء */
+  color: #333;
+  text-align: center;
+}
+
+.registration-modal.show .registration-modal-content {
+  transform: translateY(0);
+}
+
+.registration-modal-content h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  /* تغيير لون العنوان */
+  color: #7289da;
+}
+
+/* تنسيقات المودال (التعديلات على الأجزاء ذات الصلة فقط) */
+
+.form-group {
+  margin-bottom: 20px;
+  /* ✨ إزالة الـ Flexbox */
+  /* display: flex; */
+  /* align-items: center; */
+  /* justify-content: space-between; */
+  text-align: right; /* لمحاذاة النص على اليمين */
+}
+
+.form-group label {
+  /* ✨ التغيير الرئيسي هنا: جعل الـ label يظهر ككتلة */
+  display: block; 
+  text-align: right;
+  margin-bottom: 5px;
+  width: auto; /* إزالة العرض الثابت */
+  color: #555;
+}
+
+.form-group input {
+  width: 100%; /* تأكد من أن الحقل يملأ العرض المتاح */
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.register-submit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  background-color: #7289da;
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.register-submit-btn:hover {
+  background-color: #677bc4;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  /* تغيير لون زر الإغلاق */
+  color: #555; 
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-button:hover {
+  color: #000;
+}
