@@ -1,9 +1,9 @@
 // chat-commands-modal.js
 import { RANK_ORDER, RANK_IMAGE_MAP } from './constants.js';
 import { db } from './firebase-config.js';
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import { addNotification, SYSTEM_USER } from './chat-firestore.js';
-
+import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { addNotification, SYSTEM_USER, sendSystemMessage } from './chat-firestore.js';
+ 
 const currentUserRank = localStorage.getItem('chatUserRank') || 'زائر';
  
 const permissions = {
@@ -23,6 +23,30 @@ const permissions = {
   'زائر': { tabs: ['account'], commands: [] }
 };
  
+ // دالة لعرض رسائل التنبيهات المنبثقة
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `app-notification ${type}`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('hide');
+        notification.addEventListener('transitionend', () => {
+            notification.remove();
+        });
+    }, 3000); // 3 ثواني
+}
+
+// الآن، في دالة confirm-mute-btn.onclick، استدع الدالة بعد تحديث البيانات
+// ...
+
+    // ... الكود السابق ...
+    
+// ...
+
+
 export function showCommandsModal(userData = {}, onRankChange) {
   let existingModal = document.getElementById('commandsModal');
   if (existingModal) existingModal.remove();
@@ -126,7 +150,7 @@ export function showCommandsModal(userData = {}, onRankChange) {
             <span class="act-btn-text">كتم الرئيسية</span>
           </button>
           <button class="act-btn" data-modal="mute-private">
-            <span class="act-btn-icon"><svg width="21" height="21" viewBox="0 0 24 24"><path fill="#64748b" d="M20 2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6.83l-4.42 4.42A1 1 0 0 1 1 20V4a2 2 0 0 1 2-2h17Zm0 2H3v13.59l3.29-3.3A1 1 0 0 1 7.83 14H20V4ZM8 9a1 1 0 1 1 0-2a1 1 0 0 1 0 2Zm4 0a1 1 0 1 1 0-2a1 1 0 0 1 0 2Zm4 0a1 1 0 1 1 0-2a1 1 0 0 1 0 2Z"/></svg></span>
+            <span class="act-btn-icon"><svg width="21" height="21" viewBox="0 0 24 24"><path fill="#64748b" d="M20 2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6.83l-4.42 4.42A1 1 0 0 1 1 20V4a2 2 0 0 1 2-2h17Zm0 2H3v13.59l3.29-3.3A1 1 0 0 1 7.83 14H20V4Zm8 9a1 1 0 1 1 0-2a1 1 0 0 1 0 2Zm4 0a1 1 0 1 1 0-2a1 1 0 0 1 0 2Zm4 0a1 1 0 1 1 0-2a1 1 0 0 1 0 2Z"/></svg></span>
             <span class="act-btn-text">كتم الخاصة</span>
           </button>
           <button class="act-btn" data-modal="kick">
@@ -229,7 +253,24 @@ export function showCommandsModal(userData = {}, onRankChange) {
     "report-user": { title: "إبلاغ", content: "يمكنك الإبلاغ عن المستخدم في حال وجود إساءة أو مخالفة." },
     "send-gift": { title: "إرسال هدية", content: "أرسل هدية لهذا المستخدم مباشرة!" },
     "warn": { title: "تحذير", content: "يمكنك إرسال تحذير لهذا المستخدم بسبب مخالفة أو تنبيه." },
-    "mute": { title: "كتم", content: "سيتم كتم المستخدم ولن يستطيع إرسال رسائل لمدة معينة." },
+    "mute": {
+        title: "كتم المستخدم",
+        content: `
+            <div class="form-group">
+                <label for="mute-duration-select">مدة الكتم:</label>
+                <select id="mute-duration-select">
+                    <option value="60000">دقيقة واحدة</option>
+                    <option value="300000">5 دقائق</option>
+                    <option value="1800000">30 دقيقة</option>
+                    <option value="3600000">ساعة واحدة</option>
+                    <option value="86400000">يوم واحد</option>
+                    <option value="604800000">أسبوع واحد</option>
+                    <option value="permanent">دائم</option>
+                </select>
+            </div>
+        `,
+        footerExtra: `<button id="confirm-mute-btn" class="btn-main">كتم</button>`
+    },
     "mute-main": { title: "كتم الدردشة الرئيسية", content: "سيتم منع المستخدم من الكتابة في الدردشة العامة فقط." },
     "mute-private": { title: "كتم الدردشة الخاصة", content: "سيتم منع المستخدم من إرسال رسائل خاصة." },
     "kick": { title: "طرد", content: "سيتم طرد المستخدم من الغرفة الحالية." },
@@ -282,6 +323,80 @@ export function showCommandsModal(userData = {}, onRankChange) {
                 footer.appendChild(btn);
               };
             });
+          }
+        });
+        return;
+      }
+      if (key === 'mute') {
+        openActionModal(modalInfo[key].title, modalInfo[key].content, {
+          footerExtra: modalInfo[key].footerExtra,
+          onReady: (m, close) => {
+            const confirmBtn = m.querySelector('#confirm-mute-btn');
+            const durationSelect = m.querySelector('#mute-duration-select');
+ 
+            confirmBtn.onclick = async () => {
+              const muteDuration = durationSelect.value;
+              const userIdToMute = userData.id || userData.uid;
+              const currentUserName = localStorage.getItem('chatUserName');
+              const currentRoomId = localStorage.getItem('lastVisitedRoomId');
+ 
+              if (!userIdToMute) {
+                alert('لا يمكن تحديد المستخدم!');
+                return;
+              }
+ 
+              // التحقق من وجود المستخدم في أي من المجموعتين
+              let userDocRef = doc(db, "users", userIdToMute);
+              let userDocSnap = await getDoc(userDocRef);
+ 
+              if (!userDocSnap.exists()) {
+                userDocRef = doc(db, "visitors", userIdToMute);
+                userDocSnap = await getDoc(userDocRef);
+                if (!userDocSnap.exists()) {
+                  alert('خطأ: المستخدم غير موجود في قاعدة البيانات.');
+                  return;
+                }
+              }
+ 
+              let muteUntil;
+              let muteText;
+ 
+              if (muteDuration === 'permanent') {
+                muteUntil = 'permanent';
+                muteText = `تم كتم المستخدم ${userData.name} بشكل دائم.`;
+              } else {
+                const durationMs = parseInt(muteDuration, 10);
+                muteUntil = Date.now() + durationMs;
+                muteText = `تم كتم المستخدم ${userData.name} لمدة ${durationSelect.options[durationSelect.selectedIndex].text}.`;
+              }
+ 
+              // ... (الكود السابق) ...
+try {
+    await updateDoc(userDocRef, {
+        isMuted: true,
+        mutedUntil: muteUntil,
+        mutedBy: currentUserName
+    });
+
+    // استدعاء دالة التنبيه
+    showNotification(`تم كتم المستخدم ${userData.name} بنجاح.`);
+
+    await sendSystemMessage({
+        text: muteText,
+        type: 'mute'
+    }, currentRoomId);
+
+    await addNotification(`تم كتمك بواسطة ${currentUserName}، لن تتمكن من الكتابة في الدردشة.`, SYSTEM_USER, userIdToMute);
+
+    // احذف هذا السطر
+    // alert('تم كتم المستخدم بنجاح!');
+
+    close();
+} catch (e) {
+    console.error('Error muting user: ', e);
+    alert('حدث خطأ أثناء محاولة الكتم.');
+}
+};
           }
         });
         return;

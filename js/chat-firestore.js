@@ -124,51 +124,70 @@ export async function loadMoreMessages(renderMessages) {
   renderMessages(docs, false);
 }
 
+// في ملف chat-firestore.js
+// ... (الاستيرادات)
 let unsubscribeFromMessages = null;
-export function listenForNewMessages(roomId, onNewMessage) {
-  if (unsubscribeFromMessages) unsubscribeFromMessages();
-  const chatBox = document.querySelector('#chat-box .chat-box');
-  const pagination = window._messagesPagination;
-  let lastTimestamp = null;
-  if (pagination && pagination.messages && pagination.messages.length > 0) {
-    lastTimestamp = pagination.messages[pagination.messages.length - 1].data().timestamp;
-  }
-  const messagesCol = collection(db, 'rooms', roomId, 'messages');
 
-  let messagesQuery;
-  if (lastTimestamp) {
-    messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'), startAfter(lastTimestamp));
-  } else {
-    messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'));
-  }
+export function listenForNewMessages(roomId) {
+    if (unsubscribeFromMessages) unsubscribeFromMessages();
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    const messagesCol = collection(db, 'rooms', roomId, 'messages');
 
-  unsubscribeFromMessages = onSnapshot(messagesQuery, snapshot => {
-    snapshot.docChanges().forEach(change => {
-      if (change.type === 'added') {
-        const messageData = { id: change.doc.id, ...change.doc.data() };
-        const usersCache = window.allUsersAndVisitorsData || [];
-        const senderData = usersCache.find(u => u.id === messageData.senderId);
+    unsubscribeFromMessages = onSnapshot(query(messagesCol, orderBy('timestamp', 'asc')), snapshot => {
+        snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+                const messageData = { id: change.doc.id, ...change.doc.data() };
+                const usersCache = window.allUsersAndVisitorsData || [];
+                const senderData = usersCache.find(u => u.id === messageData.senderId);
 
-        if (!messageData.isSystemMessage) {
-          messageData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
-          messageData.senderRank = senderData?.rank || 'زائر';
-          messageData.level = senderData?.level || 1;
-        }
-        onNewMessage(messageData);
-      }
+                if (!messageData.isSystemMessage) {
+                    messageData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
+                    messageData.senderRank = senderData?.rank || 'زائر';
+                    messageData.level = senderData?.level || 1;
+                }
+
+                // --- إضافة منطق التنظيف الفوري ---
+                if (messageData.isSystemMessage && messageData.type === 'clear') {
+                    // امسح كل الرسائل من الواجهة
+                    chatBox.innerHTML = '';
+                    // أضف فقط رسالة النظام الخاصة بالتنظيف
+                    const elem = createSystemMessageElement(messageData.text);
+                    chatBox.appendChild(elem);
+                    // لا تعرض بقية الرسائل
+                    return;
+                }
+                // --- نهاية منطق التنظيف ---
+
+                const elem = messageData.isSystemMessage ?
+                    createSystemMessageElement(messageData.text) :
+                    createMessageElement(messageData);
+                chatBox.appendChild(elem);
+
+            } else if (change.type === 'removed') {
+                // منطق حذف رسالة منفردة
+                const messageElement = chatBox.querySelector(`[data-id="${change.doc.id}"]`);
+                if (messageElement) {
+                    messageElement.remove();
+                }
+            }
+        });
+        setTimeout(() => {
+            if (chatBox && chatBox.scrollHeight > chatBox.clientHeight) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }, 100);
+    }, error => {
+        console.error('Error listening to messages:', error);
+        chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Failed to load messages.</div>';
     });
-    setTimeout(() => {
-      if (chatBox && chatBox.scrollHeight > chatBox.clientHeight) {
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
-    }, 100);
-  }, error => {
-    console.error('Error listening to messages:', error);
-    chatBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Failed to load messages.</div>';
-  });
 
-  return unsubscribeFromMessages;
+    return unsubscribeFromMessages;
 }
+// ... (بقية الكود)
+
+
+// ... (بقية الدوال)
+
 
 export async function updateUserExperience(userId) {
   const userRef = doc(db, 'users', userId);
@@ -289,14 +308,27 @@ export async function sendMessage(messageText, roomId, imageUrl = null) {
   }
 }
 
-export async function sendSystemMessage(text, roomId) {
-  if (!roomId || !text) return;
+export async function sendSystemMessage(message, roomId) {
+  if (!roomId || !message) return;
   const messagesCollectionRef = collection(db, 'rooms', roomId, 'messages');
-  const newMessage = {
-    text,
-    timestamp: serverTimestamp(),
-    isSystemMessage: true
-  };
+  let newMessage;
+  if (typeof message === 'string') {
+    // دعم النمط القديم: فقط نص
+    newMessage = {
+      text: message,
+      timestamp: serverTimestamp(),
+      isSystemMessage: true
+    };
+  } else if (typeof message === 'object') {
+    // دعم النمط الجديد: كائن رسالة
+    newMessage = {
+      ...message,
+      timestamp: serverTimestamp(),
+      isSystemMessage: true
+    };
+  } else {
+    return;
+  }
   try {
     await addDoc(messagesCollectionRef, newMessage);
   } catch (error) {

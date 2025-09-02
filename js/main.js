@@ -11,8 +11,8 @@ import {
 import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showLevelInfoModal, showNotificationsModal, listenForUnreadNotifications } from './modals.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
-import { db, auth } from './firebase-config.js'; // تأكد من استيراد db و auth
-import { doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { auth, db } from './firebase-config.js';
+import { doc, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 export let allUsersAndVisitorsData = [];
 let privateChatModal = null;
@@ -39,33 +39,56 @@ let userType = null;
 let isReloading = false;
  
 // إضافة مستمع لحالة المستخدم لتحديث الرتبة والصلاحيات عند تغييرها
+// في ملف main.js
+// ... (الاستيرادات والدوال الأخرى) ...
+
+// في ملف main.js
+// ... (الكود السابق) ...
+
 auth.onAuthStateChanged(user => {
     if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         onSnapshot(userDocRef, (docSnap) => {
             const userData = docSnap.data();
-            if (userData && userData.needsRefresh && !isReloading) {
-                isReloading = true;
- 
-                // تحديث الرتبة في localStorage
-                if (userData.rank) {
-                    localStorage.setItem('chatUserRank', userData.rank);
+            if (userData) {
+                // تحديث الواجهة العامة
+                const mainMessageInput = document.getElementById('message-input');
+                const mainSendButton = document.querySelector('.send-btn');
+                const mainEmojiButton = document.querySelector('.emoji-btn-circle');
+                const mainPlusButton = document.getElementById('plus-btn-toggle');
+                const mainImageUpload = document.getElementById('image-upload-input');
+                checkMuteStatusAndUpdateUI(mainMessageInput, mainSendButton, mainEmojiButton, mainPlusButton, mainImageUpload);
+
+                // ✨ تحديث الواجهة الخاصة إذا كانت مفتوحة
+                const privateChatInput = document.querySelector('.private-chat-input');
+                if (privateChatInput) {
+                    const privateChatSendBtn = document.querySelector('.private-chat-send-btn');
+                    const privateEmojiButton = null;
+                    const privatePlusButton = null;
+                    const privateImageUpload = null;
+                    checkMuteStatusAndUpdateUI(privateChatInput, privateChatSendBtn, privateEmojiButton, privatePlusButton, privateImageUpload);
                 }
- 
-                // إعادة تعيين الحقل إلى false
-                updateDoc(userDocRef, {
-                    needsRefresh: false
-                }).then(() => {
-                    // تحديث الصفحة بعد إعادة تعيين الحقل بنجاح
-                    window.location.reload();
-                }).catch((error) => {
-                    console.error("خطأ في إعادة تعيين حقل التحديث:", error);
-                    window.location.reload();
-                });
+
+                if (userData.needsRefresh && !isReloading) {
+                    isReloading = true;
+                    if (userData.rank) {
+                        localStorage.setItem('chatUserRank', userData.rank);
+                    }
+                    updateDoc(userDocRef, {
+                        needsRefresh: false
+                    }).then(() => {
+                        console.log("تم تحديث بيانات المستخدم بنجاح.");
+                    }).catch((error) => {
+                        console.error("خطأ في إعادة تعيين حقل التحديث:", error);
+                        window.location.reload();
+                    });
+                }
             }
         });
     }
 });
+
+
 
 async function fetchUsersWithRetry(retries = 3) {
     for (let i = 0; i < retries; i++) {
@@ -560,6 +583,92 @@ function renderMessages(docs, clear = false) {
     });
 }
 
+// في ملف main.js
+// ... (بقية الكود) ...
+
+// دالة جديدة للتحقق من حالة الكتم وتحديث واجهة المستخدم
+ 
+export async function checkMuteStatusAndUpdateUI() {
+    const currentUserId = localStorage.getItem('chatUserId');
+    if (!currentUserId) return;
+
+    // استهداف حقل الإدخال وزر الإرسال مباشرةً
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.querySelector('.send-btn');
+    const emojiButton = document.querySelector('.emoji-btn-circle');
+    const plusButton = document.getElementById('plus-btn-toggle');
+    const imageUpload = document.getElementById('image-upload-input');
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... (الكود السابق) ...
+
+    const mainMessageInput = document.getElementById('message-input');
+    const mainSendButton = document.querySelector('.send-btn');
+    const mainEmojiButton = document.querySelector('.emoji-btn-circle');
+    const mainPlusButton = document.getElementById('plus-btn-toggle');
+    const mainImageUpload = document.getElementById('image-upload-input');
+
+    // استدعاء الدالة للدردشة العامة
+    checkMuteStatusAndUpdateUI(mainMessageInput, mainSendButton, mainEmojiButton, mainPlusButton, mainImageUpload);
+});
+
+
+    if (!messageInput || !sendButton || !emojiButton || !plusButton || !imageUpload) {
+        console.error('فشل في العثور على أحد عناصر واجهة المستخدم.');
+        return;
+    }
+
+    try {
+        let userDocRef = doc(db, "users", currentUserId);
+        let userDocSnap = await getDoc(userDocRef);
+
+        if (!userDocSnap.exists()) {
+            userDocRef = doc(db, "visitors", currentUserId);
+            userDocSnap = await getDoc(userDocRef);
+        }
+
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const isMuted = userData.isMuted || false;
+            const mutedUntil = userData.mutedUntil;
+
+            if (isMuted) {
+                if (mutedUntil !== 'permanent' && mutedUntil < Date.now()) {
+                    await updateDoc(userDocRef, { isMuted: false, mutedUntil: null });
+                    // استعادة العناصر لوضعها الطبيعي
+                    messageInput.placeholder = 'اكتب هنا...';
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    emojiButton.disabled = false;
+                    plusButton.disabled = false;
+                    imageUpload.disabled = false;
+                } else {
+                    // المستخدم مكتوم
+                    messageInput.value = '';
+                    messageInput.placeholder = 'الدردشة مقفلة';
+                    messageInput.disabled = true; // تعطيل حقل الإدخال
+                    sendButton.disabled = true; // تعطيل زر الإرسال
+                    emojiButton.disabled = true; // تعطيل زر الإيموجي
+                    plusButton.disabled = true; // تعطيل زر الـ plus
+                    imageUpload.disabled = true; // تعطيل زر تحميل الصورة
+                }
+            } else {
+                // المستخدم غير مكتوم
+                messageInput.placeholder = 'اكتب هنا...';
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                emojiButton.disabled = false;
+                plusButton.disabled = false;
+                imageUpload.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error("خطأ في التحقق من حالة الكتم:", error);
+    }
+}
+
+
+
 document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent("top-bar", "components/top-bar.html");
     await loadComponent("chat-box", "components/chat-box.html");
@@ -749,26 +858,12 @@ if (chatUserId) await checkAndSendJoinMessage(currentRoomId);
 // --- تحميل أول صفحة رسائل ---
 await loadInitialMessages(currentRoomId, renderMessages);
 
+checkMuteStatusAndUpdateUI();
+
 // --- الاستماع اللحظي للرسائل الجديدة فقط ---
 
 if (messagesUnsubscriber) messagesUnsubscriber();
-messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
-    const chatBox = document.querySelector('#chat-box .chat-box');
-    const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
-    if (!msgData.isSystemMessage) {
-        msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
-        msgData.senderRank = senderData?.rank || 'زائر';
-        msgData.level = senderData?.level || 1;
-    }
-    const elem = msgData.isSystemMessage ?
-        createSystemMessageElement(msgData.text) :
-        createMessageElement(msgData);
-    chatBox.appendChild(elem);
-    setTimeout(() => {
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }, 100);
-});
-
+messagesUnsubscriber = listenForNewMessages(currentRoomId);
 listenForUserRankChanges();
 
 addRegistrationButtonToBottomBar(currentUserRank); // قم بتمرير الرتبة هنا
@@ -996,36 +1091,35 @@ const handleMessageSend = async () => {
         }
 
         try {
-            // أولاً، أوقف المستمع الحالي لتجنب أي مشاكل أثناء الحذف.
-            if (messagesUnsubscriber) messagesUnsubscriber();
-            
-            // احذف الرسائل من Firestore
+            // 1. إلغاء الاشتراك من المستمع مؤقتاً
+            if (messagesUnsubscriber) {
+                messagesUnsubscriber();
+                messagesUnsubscriber = null;
+            }
+
+            // 2. حذف جميع الرسائل من قاعدة البيانات
             await deleteChatRoomMessages(currentRoomId);
-            
-            // أرسل رسالة نظام لإعلام الجميع أن الغرفة تم تنظيفها
+
+            // 3. إرسال رسالة نظام نوعها clear (ستقوم جميع الواجهات بمسح الرسائل عند استقبالها)
             const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
             const confirmationMessage = `تم تنظيف الغرفة من قبل ${chatUserName}`;
-            await sendSystemMessage(confirmationMessage, currentRoomId);
-            
-            // أعد تشغيل المستمع للرسائل الجديدة بعد عملية الحذف
-            messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
-                const chatBox = document.querySelector('#chat-box .chat-box');
-                // هذا الشرط يفرغ الصندوق تمامًا ويعرض رسالة التنظيف
-                if (msgData.isSystemMessage && msgData.text.includes("تم تنظيف الغرفة")) {
-                    chatBox.innerHTML = '';
-                    const elem = createSystemMessageElement(msgData.text);
-                    chatBox.appendChild(elem);
-                    return; // توقف هنا ولا تعرض أي شيء آخر
-                }
-                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
-                // ... (بقية كود عرض الرسائل)
-            });
-            
+            await sendSystemMessage({ text: confirmationMessage, type: 'clear' }, currentRoomId);
+
+            // 4. إعادة الاشتراك في المستمع
+            messagesUnsubscriber = listenForNewMessages(currentRoomId);
+
         } catch (error) {
             showNotification('فشل تنظيف الدردشة.', 'error');
         }
         return;
     }
+
+    // ... (بقية كود إرسال الرسائل العادية)
+
+    
+
+    // ... (بقية كود إرسال الرسائل العادية)
+
 
     // كود إرسال الرسائل العادية
     messageInput.value = '';
@@ -1050,13 +1144,13 @@ const handleMessageSend = async () => {
                 const messageText = messageInput.value.trim();
                 if (messageText) {
                     messageInput.value = '';
-                    try {
-                        await sendMessage(messageText, currentRoomId, null);
-                        scrollToBottom();
-                    } catch (error) {
-                        alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
-                    }
-                }
+    try {
+        await sendMessage(messageText, currentRoomId, null);
+        scrollToBottom();
+    } catch (error) {
+        alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
+    }
+};
             });
             messageInput.addEventListener('keypress', async (e) => {
                 if (e.key === 'Enter') {

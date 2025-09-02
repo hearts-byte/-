@@ -12,6 +12,7 @@ import {
 import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showCommandsModal } from './chat-commands-modal.js';
+import { checkMuteStatusAndUpdateUI } from './main.js';
 
 // في ملف js/chat-ui.js
 // ... (الاستيرادات)
@@ -330,90 +331,104 @@ function hideMinimizedChatAvatar(userId) {
   }
 }
 
+// في ملف js/chat-ui.js
+// ... (بقية الكود) ...
+
 export async function createAndShowPrivateChatDialog(targetUserData) {
-  const existingDialog = document.getElementById('privateChatDialog');
+    const existingDialog = document.getElementById('privateChatDialog');
     if (existingDialog) {
         existingDialog.remove();
     }
     
-  if (minimizedPrivateChat && minimizedPrivateChat.id === targetUserData.id) {
-    restorePrivateChatDialog(targetUserData);
-    return;
-  }
-  currentOpenPrivateChatId = targetUserData.id;
-  updatePrivateButtonNotification(false);
-  const minimizedAvatar = document.querySelector(`.minimized-chat-avatar[data-user-id="${targetUserData.id}"]`);
-  if (minimizedAvatar) {
-    minimizedAvatar.classList.remove('has-new-messages');
-  }
-  if (privateChatDialog) {
-    hidePrivateChatDialog();
-  }
-  privateChatDialog = document.createElement('div');
-  privateChatDialog.classList.add('private-chat-dialog');
-  privateChatDialog.id = 'privateChatDialog';
-  document.body.appendChild(privateChatDialog);
-  privateChatDialog.innerHTML = privateChatDialogHTML;
-  setTimeout(() => {
-    privateChatDialog.classList.add('show');
-  }, 10);
+    if (minimizedPrivateChat && minimizedPrivateChat.id === targetUserData.id) {
+        restorePrivateChatDialog(targetUserData);
+        return;
+    }
+    
+    currentOpenPrivateChatId = targetUserData.id;
+    updatePrivateButtonNotification(false);
+    const minimizedAvatar = document.querySelector(`.minimized-chat-avatar[data-user-id="${targetUserData.id}"]`);
+    if (minimizedAvatar) {
+        minimizedAvatar.classList.remove('has-new-messages');
+    }
+    if (privateChatDialog) {
+        hidePrivateChatDialog();
+    }
+    
+    privateChatDialog = document.createElement('div');
+    privateChatDialog.classList.add('private-chat-dialog');
+    privateChatDialog.id = 'privateChatDialog';
+    document.body.appendChild(privateChatDialog);
+    privateChatDialog.innerHTML = privateChatDialogHTML;
+    setTimeout(() => {
+        privateChatDialog.classList.add('show');
+    }, 10);
 
-  const avatarElement = privateChatDialog.querySelector('.private-chat-avatar');
-  const usernameElement = privateChatDialog.querySelector('.private-chat-username');
-  const privateChatMessagesBox = privateChatDialog.querySelector('.private-chat-messages');
+    const avatarElement = privateChatDialog.querySelector('.private-chat-avatar');
+    const usernameElement = privateChatDialog.querySelector('.private-chat-username');
+    const privateChatMessagesBox = privateChatDialog.querySelector('.private-chat-messages');
 
-  if (avatarElement) avatarElement.src = targetUserData.avatar;
-  if (usernameElement) usernameElement.textContent = targetUserData.name;
+    if (avatarElement) avatarElement.src = targetUserData.avatar;
+    if (usernameElement) usernameElement.textContent = targetUserData.name;
 
-  privateChatDialog.querySelector('.close-private-chat-btn').addEventListener('click', () => {
-    hidePrivateChatDialog();
-  });
-  privateChatDialog.querySelector('.minimize-private-chat-btn').addEventListener('click', () => {
-    minimizePrivateChatDialog(targetUserData);
-  });
-
-  const privateChatInput = privateChatDialog.querySelector('.private-chat-input');
-  const privateChatSendBtn = privateChatDialog.querySelector('.private-chat-send-btn');
-
-  const currentUserId = localStorage.getItem('chatUserId');
-  if (currentUserId) {
-    await 
-    setupPrivateMessagesListener(currentUserId, targetUserData.id, privateChatMessagesBox, true);
-  } else {
-    console.error('معرف المستخدم الحالي غير موجود لفتح الدردشة الخاصة.');
-    privateChatMessagesBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">الرجاء تسجيل الدخول لبدء محادثة خاصة.</div>';
-    return;
-  }
-
-  if (privateChatSendBtn && privateChatInput && privateChatMessagesBox) {
-    privateChatSendBtn.addEventListener('click', async () => {
-      const messageText = privateChatInput.value.trim();
-      if (messageText) {
-        privateChatSendBtn.disabled = true;
-        privateChatInput.disabled = true;
-        try {
-          const senderId = localStorage.getItem('chatUserId');
-          const senderName = localStorage.getItem('chatUserName');
-          const senderAvatar = localStorage.getItem('chatUserAvatar');
-          await sendPrivateMessage(senderId, senderName, senderAvatar, targetUserData.id, messageText);
-          privateChatInput.value = '';
-        } finally {
-          privateChatSendBtn.disabled = false;
-          privateChatInput.disabled = false;
-        }
-      }
+    privateChatDialog.querySelector('.close-private-chat-btn').addEventListener('click', () => {
+        hidePrivateChatDialog();
     });
-    privateChatInput.addEventListener('keypress', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        privateChatSendBtn.click();
-      }
+    privateChatDialog.querySelector('.minimize-private-chat-btn').addEventListener('click', () => {
+        minimizePrivateChatDialog(targetUserData);
     });
-  } else {
-    console.error("Failed to find private chat input elements. Check private chat dialog HTML structure.");
-  }
-  hideUserInfoModal();
+
+    // في ملف js/chat-ui.js
+// ... (الكود السابق) ...
+    // ... (الكود السابق) ...
+
+    const privateChatInput = privateChatDialog.querySelector('.private-chat-input');
+    const privateChatSendBtn = privateChatDialog.querySelector('.private-chat-send-btn');
+    const privateEmojiButton = null;
+    const privatePlusButton = null;
+    const privateImageUpload = null;
+
+    // ✨ استدعاء دالة فحص الكتم هنا
+    const currentUserId = localStorage.getItem('chatUserId');
+    if (currentUserId) {
+        await setupPrivateMessagesListener(currentUserId, targetUserData.id, privateChatMessagesBox, true);
+        checkMuteStatusAndUpdateUI(privateChatInput, privateChatSendBtn, privateEmojiButton, privatePlusButton, privateImageUpload);
+    } else {
+        console.error('معرف المستخدم الحالي غير موجود لفتح الدردشة الخاصة.');
+        privateChatMessagesBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">الرجاء تسجيل الدخول لبدء محادثة خاصة.</div>';
+        return;
+    }
+
+    if (privateChatSendBtn && privateChatInput && privateChatMessagesBox) {
+        privateChatSendBtn.addEventListener('click', async () => {
+            const messageText = privateChatInput.value.trim();
+            if (messageText) {
+                privateChatSendBtn.disabled = true;
+                privateChatInput.disabled = true;
+                try {
+                    const senderId = localStorage.getItem('chatUserId');
+                    const senderName = localStorage.getItem('chatUserName');
+                    const senderAvatar = localStorage.getItem('chatUserAvatar');
+                    await sendPrivateMessage(senderId, senderName, senderAvatar, targetUserData.id, messageText);
+                    privateChatInput.value = '';
+                } finally {
+                    privateChatSendBtn.disabled = false;
+                    privateChatInput.disabled = false;
+                }
+            }
+        });
+        privateChatInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                privateChatSendBtn.click();
+            }
+        });
+    } else {
+        console.error("Failed to find private chat input elements. Check private chat dialog HTML structure.");
+    }
+    hideUserInfoModal();
 }
+
 
 export function hidePrivateChatDialog() {
   if (privateChatDialog) {
