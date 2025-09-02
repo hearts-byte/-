@@ -11,12 +11,9 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* لمنع ظهور شريط التمرير */
     font-family: 'Tajawal', sans-serif;
     color: #333;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow: hidden; /* لمنع أي تمرير في الصفحة بأكملها */
     background-color: #f0f2f5;
 }
 
@@ -32,6 +29,29 @@ body::before {
     background-position: center;
     filter: brightness(0.9) grayscale(20%);
     z-index: -1;
+}
+
+/* ================== الغلاف الرئيسي (Container Wrapper) ================== */
+.container-wrapper {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* ================== الحاوية الرئيسية ================== */
+.container {
+    width: 100%;
+    max-width: 500px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+    box-sizing: border-box;
+    /* تمت إزالة overflow-y: auto; لجعل الصفحة ثابتة */
+    max-height: 85vh; /* قيمة أقل لضمان أن المحتوى يتناسب مع الشاشة */
 }
 
 /* ================== رأس الصفحة ================== */
@@ -361,6 +381,9 @@ body::before {
         min-height: 100vh;
         box-shadow: none;
         padding: 15px;
+        max-width: 100%;
+        max-height: none; /* إزالة الحد الأقصى للارتفاع في الشاشات الصغيرة جدًا */
+        overflow-y: hidden; /* إخفاء التمرير في الشاشات الصغيرة */
     }
 
     .header {
