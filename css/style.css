@@ -2836,3 +2836,92 @@ vertical-align: middle;
 .close-button:hover {
   color: #000;
 }
+
+/* أضف هذه الأنماط في ملف styles.css */
+#message-input:disabled {
+    background-color: #f0f2f5;
+    cursor: not-allowed;
+    color: #a0a0a0;
+}
+
+.send-btn:disabled,
+.emoji-btn-circle:disabled,
+.plus-btn-circle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* تنسيق الحاوية الرئيسية للقائمة */
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* تنسيق التسمية (Label) */
+.form-group label {
+    font-size: 1rem;
+    color: #4b5563; /* لون رمادي داكن */
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+/* تنسيق قائمة الاختيار نفسها */
+#mute-duration-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: #374151;
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    appearance: none; /* إخفاء شكل القائمة الافتراضي للمتصفح */
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+/* تأثير عند التركيز (Focus) على القائمة */
+#mute-duration-select:focus {
+    border-color: #4f46e5; /* لون أزرق عند التركيز */
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* تنسيق خيارات القائمة (Options) */
+#mute-duration-select option {
+    background-color: #ffffff;
+    color: #374151;
+    padding: 0.5rem 1rem;
+}
+
+/* أنماط رسائل التنبيه المنبثقة */
+.app-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    
+    /* هذا هو التعديل الأساسي */
+    z-index: 9999; /* قيمة عالية جدًا لضمان ظهورها فوق كل شيء */
+    
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+}
+
+/* لون الخلفية للرسائل الناجحة */
+.app-notification.success {
+    background-color: #10b981; /* أخضر */
+}
+
+/* عند الإخفاء */
+.app-notification.hide {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+}
