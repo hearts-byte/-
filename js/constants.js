@@ -36,58 +36,72 @@ export const RANK_IMAGE_MAP = {
 export const RANK_PERMISSIONS = {
     "المالك": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: true
     },
     "اونر اداري": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: true
     },
     "اونر": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "سوبر اداري": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "مشرف": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "سوبر ادمن": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "ادمن": {
         canSeeReportButton: true,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "بريميوم": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "بلاتينيوم": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "ملكي": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "ذهبي": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "برونزي": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "عضو": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: true
+        canSeePrivateChatButton: true,
+        canClearRoom: false
     },
     "زائر": {
         canSeeReportButton: false,
-        canSeePrivateChatButton: false
+        canSeePrivateChatButton: false,
+        canClearRoom: false
     }
 };

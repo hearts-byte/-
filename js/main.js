@@ -977,83 +977,57 @@ if (currentUserId) {
         const messageInput = document.querySelector('#input-bar input');
         const sendButton = document.querySelector('#input-bar .send-btn');
         
-        const handleMessageSend = async () => {
+        // chat-ui.js
+// ... (الاستيرادات الأخرى)
+
+// ... (بقية الكود)
+
+const handleMessageSend = async () => {
     const messageText = messageInput.value.trim();
     if (!messageText) return;
 
     if (messageText.toLowerCase() === '/clear') {
-        // **قم بتفريغ الحقل فوراً لمنع الإرسال المتكرر**
-        messageInput.value = ''; 
+        messageInput.value = '';
+
+        const currentUserRank = localStorage.getItem('chatUserRank');
+        if (!RANK_PERMISSIONS[currentUserRank]?.canClearRoom) {
+            showNotification('عذراً، لا تملك صلاحية لتنظيف الغرفة.', 'error');
+            return;
+        }
 
         try {
+            // أولاً، أوقف المستمع الحالي لتجنب أي مشاكل أثناء الحذف.
             if (messagesUnsubscriber) messagesUnsubscriber();
             
+            // احذف الرسائل من Firestore
             await deleteChatRoomMessages(currentRoomId);
             
-            const chatBox = document.querySelector('#chat-box .chat-box');
-            if (chatBox) {
-                chatBox.innerHTML = '';
-            }
-            
+            // أرسل رسالة نظام لإعلام الجميع أن الغرفة تم تنظيفها
             const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
             const confirmationMessage = `تم تنظيف الغرفة من قبل ${chatUserName}`;
             await sendSystemMessage(confirmationMessage, currentRoomId);
             
-            messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
-    const chatBox = document.querySelector('#chat-box .chat-box');
-    
-    // --- هنا ضع شرط التنظيف أول شيء ---
-    if (msgData.isSystemMessage && msgData.text.includes("تم تنظيف الغرفة")) {
-        chatBox.innerHTML = '';
-        // أضف رسالة النظام بعد التفريغ
-        const elem = createSystemMessageElement(msgData.text);
-        chatBox.appendChild(elem);
-        setTimeout(() => {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 100);
-        return;
-    }
-    // --- نهاية شرط التنظيف ---
-
-    const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
-    if (!msgData.isSystemMessage) {
-        msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
-        msgData.senderRank = senderData?.rank || 'زائر';
-        msgData.level = senderData?.level || 1;
-    }
-    const elem = msgData.isSystemMessage ?
-        createSystemMessageElement(msgData.text) :
-        createMessageElement(msgData);
-    chatBox.appendChild(elem);
-    setTimeout(() => {
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }, 100);
-});
-
-        } catch (error) {
-            alert('فشل تنظيف الدردشة. ليس لديك الصلاحية لفعل ذلك.');
-            // يمكنك ترك هذا الجزء كما هو، أو إضافة كود منع الإرسال هنا أيضًا
+            // أعد تشغيل المستمع للرسائل الجديدة بعد عملية الحذف
             messagesUnsubscriber = listenForNewMessages(currentRoomId, (msgData) => {
                 const chatBox = document.querySelector('#chat-box .chat-box');
-                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
-                if (!msgData.isSystemMessage) {
-                    msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
-                    msgData.senderRank = senderData?.rank || 'زائر';
-                    msgData.level = senderData?.level || 1;
+                // هذا الشرط يفرغ الصندوق تمامًا ويعرض رسالة التنظيف
+                if (msgData.isSystemMessage && msgData.text.includes("تم تنظيف الغرفة")) {
+                    chatBox.innerHTML = '';
+                    const elem = createSystemMessageElement(msgData.text);
+                    chatBox.appendChild(elem);
+                    return; // توقف هنا ولا تعرض أي شيء آخر
                 }
-                const elem = msgData.isSystemMessage ?
-                    createSystemMessageElement(msgData.text) :
-                    createMessageElement(msgData);
-                chatBox.appendChild(elem);
-                setTimeout(() => {
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                }, 100);
+                const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+                // ... (بقية كود عرض الرسائل)
             });
+            
+        } catch (error) {
+            showNotification('فشل تنظيف الدردشة.', 'error');
         }
         return;
     }
 
-    // هذا السطر الآن لن يعمل إلا للرسائل العادية
+    // كود إرسال الرسائل العادية
     messageInput.value = '';
     try {
         await sendMessage(messageText, currentRoomId, null);
@@ -1062,6 +1036,7 @@ if (currentUserId) {
         alert('فشل إرسال الرسالة. يرجى المحاولة مرة أخرى.');
     }
 };
+
         if (messageInput && sendButton && currentUserId) {
             sendButton.addEventListener('click', handleMessageSend);
             messageInput.addEventListener('keypress', async (e) => {
@@ -1174,3 +1149,50 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+/**
+ * تعرض إشعارًا مؤقتًا في أعلى الصفحة.
+ * @param {string} message - نص الرسالة.
+ * @param {string} type - نوع الرسالة (e.g., 'error', 'success').
+ */
+function showNotification(message, type = 'error') {
+    // 1. إنشاء العنصر الجديد
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    // 2. تطبيق التنسيق الأساسي (يمكنك وضع هذا في ملف CSS)
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.left = '50%';
+    notification.style.transform = 'translateX(-50%)';
+    notification.style.padding = '10px 20px';
+    notification.style.borderRadius = '5px';
+    notification.style.color = '#fff';
+    notification.style.zIndex = '1000';
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.5s ease-in-out';
+
+    // 3. تحديد الألوان حسب النوع
+    if (type === 'error') {
+        notification.style.backgroundColor = 'rgba(220, 53, 69, 0.9)'; // أحمر
+    } else if (type === 'success') {
+        notification.style.backgroundColor = 'rgba(40, 167, 69, 0.9)'; // أخضر
+    }
+
+    // 4. إضافته إلى الجسم
+    document.body.appendChild(notification);
+
+    // 5. إظهار الإشعار تدريجياً
+    setTimeout(() => {
+        notification.style.opacity = '1';
+    }, 10);
+
+    // 6. إزالته بعد 3 ثوانٍ
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.addEventListener('transitionend', () => {
+            notification.remove();
+        });
+    }, 3000); // يختفي بعد 3 ثوانٍ
+}
