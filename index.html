@@ -3,29 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> شات القلوب الراقية </title>
-  <meta name="description" content=" شات القلوب الراقية  - دردشة مجانية وأصدقاء ممتعين.">
-  <meta name="description" content="في أكبر دردشة تفاعلية في الوطن العربي نحن نحرص في تطبيقاتنا على إثراء الدردشة بمعلومات قيمة ومفيدة، ونشر المحتوى الجيد الذي يساعد المستخدمين للحصول على المزيد من المعلومات والأفكار الحديثة">
-  <meta name="keywords" content="شات, دردشة, قلوب, أصدقاء,  شات القلوب الراقية ">
-
-  <!-- وسم التحقق من جوجل -->
-  <meta name="google-site-verification" content="jzEOgTKkcltAe7xoI5N-5UtZJmzj18UhrfO_oxi1Drw" />
-  
+    <title>شات القلوب الراقية</title>
+    <meta name="description" content="شات القلوب الراقية - دردشة مجانية وأصدقاء ممتعين.">
+    <meta name="description" content="في أكبر دردشة تفاعلية في الوطن العربي نحن نحرص في تطبيقاتنا على إثراء الدردشة بمعلومات قيمة ومفيدة، ونشر المحتوى الجيد الذي يساعد المستخدمين للحصول على المزيد من المعلومات والأفكار الحديثة">
+    <meta name="keywords" content="شات, دردشة, قلوب, أصدقاء, شات القلوب الراقية">
+    <meta name="google-site-verification" content="jzEOgTKkcltAe7xoI5N-5UtZJmzj18UhrfO_oxi1Drw" />
     <link rel="stylesheet" href="css/login_styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-  <script>
-  // إذا كان المستخدم مسجل الدخول بالفعل، انتقل مباشرة لصفحة الشات
-  if (localStorage.getItem('chatUserId')) {
-    window.location.href = 'chat.html';
-  }
+<script>
+    if (localStorage.getItem('chatUserId')) {
+        window.location.href = 'chat.html';
+    }
 </script>
-    <div id="alertMessage" class="alert-message"></div>
+<div id="alertMessage" class="alert-message"></div>
 
+<div class="container-wrapper">
     <div class="container">
         <div class="header">
-            <div class="logo"> شات القلوب الراقية </div>
+            <div class="logo">شات القلوب الراقية</div>
         </div>
 
         <div class="buttons">
@@ -55,76 +52,77 @@
             <p>بالنقر على "سجل الآن" أو "دخول الزوار" أو "دخول بالعضوية"، فإنك توافق على <a href="#">شروط الخدمة</a> و <a href="#">سياسة الخصوصية</a>.</p>
         </div>
     </div>
+</div>
 
-    <div id="visitorModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button visitor-close-button">&times;</span>
-            <h2>دخول الزوار</h2>
-            <form id="visitorForm">
+<div id="visitorModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button visitor-close-button">&times;</span>
+        <h2>دخول الزوار</h2>
+        <form id="visitorForm">
+            <div class="form-group">
+                <label for="visitorName">اسمك المستعار:</label>
+                <input type="text" id="visitorName" name="visitorName" required>
+            </div>
+            <div class="form-row">
                 <div class="form-group">
-                    <label for="visitorName">اسمك المستعار:</label>
-                    <input type="text" id="visitorName" name="visitorName" required>
+                    <label for="visitorAge">العمر:</label>
+                    <select id="visitorAge" name="visitorAge" required>
+                        <option value="">اختر عمرك</option>
+                    </select>
                 </div>
-       <div class="form-row">
-    <div class="form-group">
-        <label for="visitorAge">العمر:</label>
-        <select id="visitorAge" name="visitorAge" required>
-            <option value="">اختر عمرك</option>
-        </select>
-    </div>
-  <div class="form-group">
-        <label for="visitorGender">الجنس:</label>
-        <select id="visitorGender" name="visitorGender" required>
-    <option value="ذكر" selected>ذكر</option>
-    <option value="أنثى">أنثى</option>
-    <option value="آخر">آخر</option>
-</select>
-    </div>
-</div>
-                <button type="submit" class="submit-modal-button">دخول</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="registerModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button register-close-button">&times;</span>
-            <h2>سجل الآن</h2>
-            <form id="registerForm">
                 <div class="form-group">
-                    <label for="registerName">اسم المستخدم:</label>
-                    <input type="text" id="registerName" name="registerName" required>
+                    <label for="visitorGender">الجنس:</label>
+                    <select id="visitorGender" name="visitorGender" required>
+                        <option value="ذكر" selected>ذكر</option>
+                        <option value="أنثى">أنثى</option>
+                        <option value="آخر">آخر</option>
+                    </select>
                 </div>
-              <div class="form-group">
-    <label for="registerPassword">كلمة المرور:</label>
-    <input type="password" id="registerPassword" name="registerPassword" required>
-</div>
-<div class="form-group">
-    <label for="registerEmail">البريد الإلكتروني:</label>
-    <input type="email" id="registerEmail" name="registerEmail" required>
-</div>
-              <div class="form-row">
-    <div class="form-group">
-        <label for="registerAge">العمر:</label>
-        <select id="registerAge" name="registerAge" required>
-            <option value="">اختر عمرك</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="registerGender">الجنس:</label>
-       <select id="registerGender" name="registerGender" required>
-    <option value="ذكر" selected>ذكر</option>
-    <option value="أنثى">أنثى</option>
-    <option value="آخر">آخر</option>
-</select>
+            </div>
+            <button type="submit" class="submit-modal-button">دخول</button>
+        </form>
     </div>
 </div>
-                <button type="submit" class="submit-modal-button">تسجيل</button>
-            </form>
-        </div>
-    </div>
 
-    <div id="memberModal" class="modal">
+<div id="registerModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button register-close-button">&times;</span>
+        <h2>سجل الآن</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="registerName">اسم المستخدم:</label>
+                <input type="text" id="registerName" name="registerName" required>
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">كلمة المرور:</label>
+                <input type="password" id="registerPassword" name="registerPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="registerEmail">البريد الإلكتروني:</label>
+                <input type="email" id="registerEmail" name="registerEmail" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="registerAge">العمر:</label>
+                    <select id="registerAge" name="registerAge" required>
+                        <option value="">اختر عمرك</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="registerGender">الجنس:</label>
+                    <select id="registerGender" name="registerGender" required>
+                        <option value="ذكر" selected>ذكر</option>
+                        <option value="أنثى">أنثى</option>
+                        <option value="آخر">آخر</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="submit-modal-button">تسجيل</button>
+        </form>
+    </div>
+</div>
+
+<div id="memberModal" class="modal">
     <div class="modal-content">
         <span class="close-button member-close-button">&times;</span>
         <h2>دخول الأعضاء</h2>
@@ -142,9 +140,9 @@
     </div>
 </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    <script type="module" src="js/firebase-config.js"></script>
-    <script type="module" src="js/script.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/script.js"></script>
 </body>
 </html>
