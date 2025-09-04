@@ -13,6 +13,7 @@ import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebase
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showCommandsModal } from './chat-commands-modal.js';
 import { checkMuteStatusAndUpdateUI } from './main.js';
+import { uploadFileToCloudinary } from './cloudinary-utils.js';
 
 // في ملف js/chat-ui.js
 // ... (الاستيرادات)
@@ -133,24 +134,30 @@ userInfoModal.innerHTML = `
     <img src="${userData.innerImage || 'images/Interior.png'}" alt="صورة الخلفية" class="profile-header-image">
   </div>
   <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name}" class="user-avatar-large">
-  <div class="user-info-group"> ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
+  <div class="user-info-group">
     <div class="user-name-display">${userData.name}</div>
+    ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
     <div class="modal-buttons">
-      <button class="modal-button view-profile">عرض الملف الشخصي</button>
-      <button class="modal-button start-private">بدء خاص</button>
-      <button class="modal-button commands-btn">الأوامر</button>
+      <button class="modal-button view-profile"><i class="fa-solid fa-user"></i> عرض الملف الشخصي</button>
+      <button class="modal-button start-private"><i class="fa-solid fa-envelope"></i> رسالة</button>
+      <button class="modal-button commands-btn"><i class="fa-solid fa-list"></i> الأوامر</button>
     </div>
   </div>
 </div>
 `;
 
 
-
 // ... (داخل دالة createUserInfoModal)
 
 // تحديد هوية المستخدم الحالي
 
-// ... (بقية الكود)
+userInfoModal.addEventListener('click', (event) => {
+        // التحقق مما إذا كان الهدف من الضغط هو المودال نفسه (الخلفية)
+        // وليس أي عنصر داخلي (مثل الأزرار أو الصور)
+        if (event.target === userInfoModal) {
+            hideUserInfoModal();
+        }
+    });
 
 const commandsButton = userInfoModal.querySelector('.modal-button.commands-btn');
 if (commandsButton) {
@@ -263,6 +270,10 @@ export function hideAllModals() {
 
 let privateChatDialog = null;
 
+// js/chat-ui.js
+
+// ... (الكود السابق لا يتغير)
+
 export const privateChatDialogHTML = `
 <div class="private-chat-header">
   <div class="private-user-info"><img src="images/default-user.png" alt="" class="private-chat-avatar">
@@ -274,13 +285,22 @@ export const privateChatDialogHTML = `
   </div>
 </div>
 <div class="private-chat-messages"></div>
-<div class="private-chat-input-area">
-  <input type="text" class="private-chat-input" placeholder="اكتب رسالتك...">
-  <button class="private-chat-send-btn">
-    <i class="fas fa-paper-plane"></i>
-  </button>
+<div class="input-bar" id="private-chat-input-bar">
+    <button class="btn icon-btn send-btn" id="private-send-btn"><i class="fas fa-paper-plane"></i></button>
+    <div class="input-field-container">
+        <input type="text" id="private-message-input" placeholder="اكتب رسالتك..." />
+        <input type="file" id="private-image-upload-input" style="display: none;" />
+    </div>
+    <button class="btn icon-btn emoji-btn-circle" id="private-emoji-btn"><i class="far fa-grin-alt"></i></button>
+    <div class="plus-button-container">
+        <button class="btn icon-btn plus-btn-circle" id="private-plus-btn-toggle">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
 </div>
 `;
+
+// ... (بقية الكود)
 
 function minimizePrivateChatDialog(targetUserData) {
   if (privateChatDialog) {
@@ -334,10 +354,26 @@ function hideMinimizedChatAvatar(userId) {
 // في ملف js/chat-ui.js
 // ... (بقية الكود) ...
 
+// js/chat-ui.js
+
+// ... (الكود السابق)
+
+// في ملف js/chat-ui.js
+
+
+
+// في ملف js/chat-ui.js
+
+// في ملف js/chat-ui.js
+
 export async function createAndShowPrivateChatDialog(targetUserData) {
     const existingDialog = document.getElementById('privateChatDialog');
     if (existingDialog) {
         existingDialog.remove();
+    }
+    
+    if (minimizedPrivateChat && minimizedPrivateChat.id !== targetUserData.id) {
+        hideMinimizedChatAvatar(minimizedPrivateChat.id);
     }
     
     if (minimizedPrivateChat && minimizedPrivateChat.id === targetUserData.id) {
@@ -378,54 +414,122 @@ export async function createAndShowPrivateChatDialog(targetUserData) {
         minimizePrivateChatDialog(targetUserData);
     });
 
-    // في ملف js/chat-ui.js
-// ... (الكود السابق) ...
-    // ... (الكود السابق) ...
-
-    const privateChatInput = privateChatDialog.querySelector('.private-chat-input');
-    const privateChatSendBtn = privateChatDialog.querySelector('.private-chat-send-btn');
-    const privateEmojiButton = null;
-    const privatePlusButton = null;
-    const privateImageUpload = null;
-
-    // ✨ استدعاء دالة فحص الكتم هنا
+    const privateChatInput = privateChatDialog.querySelector('#private-message-input');
+    const privateChatSendBtn = privateChatDialog.querySelector('#private-send-btn');
+    const privateEmojiButton = privateChatDialog.querySelector('#private-emoji-btn');
+    const privatePlusButton = privateChatDialog.querySelector('#private-plus-btn-toggle');
+    const privateImageUpload = privateChatDialog.querySelector('#private-image-upload-input');
+    
     const currentUserId = localStorage.getItem('chatUserId');
+    
     if (currentUserId) {
-        await setupPrivateMessagesListener(currentUserId, targetUserData.id, privateChatMessagesBox, true);
+        // ✨ هذا هو التعديل الجديد
+        privateChatMessagesBox.innerHTML = '';
+        const loaderElement = document.createElement('div');
+        loaderElement.classList.add('private-chat-loader');
+        privateChatMessagesBox.appendChild(loaderElement);
+        loaderElement.style.display = 'block';
+
+        // استخدام متغير لتتبع أول رسالة
+        let isFirstMessageLoaded = false;
+        
+        // تعديل setupPrivateMessagesListener لإخفاء الدائرة عند تحميل أول رسالة
+        const unsubscribe = setupPrivateMessagesListener(currentUserId, targetUserData.id, privateChatMessagesBox);
+        
+        const observer = new MutationObserver((mutationsList, observer) => {
+            // التحقق من وجود عناصر رسائل داخل الصندوق
+            const hasMessages = privateChatMessagesBox.querySelector('.private-message-item');
+            if (hasMessages && !isFirstMessageLoaded) {
+                loaderElement.style.display = 'none';
+                isFirstMessageLoaded = true;
+                observer.disconnect(); // إيقاف المراقبة بعد إخفاء الدائرة
+            }
+        });
+        
+        observer.observe(privateChatMessagesBox, { childList: true });
+        
         checkMuteStatusAndUpdateUI(privateChatInput, privateChatSendBtn, privateEmojiButton, privatePlusButton, privateImageUpload);
     } else {
         console.error('معرف المستخدم الحالي غير موجود لفتح الدردشة الخاصة.');
         privateChatMessagesBox.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">الرجاء تسجيل الدخول لبدء محادثة خاصة.</div>';
         return;
     }
+    
+    // ... (بقية الدالة) ...
 
-    if (privateChatSendBtn && privateChatInput && privateChatMessagesBox) {
-        privateChatSendBtn.addEventListener('click', async () => {
-            const messageText = privateChatInput.value.trim();
-            if (messageText) {
-                privateChatSendBtn.disabled = true;
-                privateChatInput.disabled = true;
-                try {
-                    const senderId = localStorage.getItem('chatUserId');
-                    const senderName = localStorage.getItem('chatUserName');
-                    const senderAvatar = localStorage.getItem('chatUserAvatar');
-                    await sendPrivateMessage(senderId, senderName, senderAvatar, targetUserData.id, messageText);
-                    privateChatInput.value = '';
-                } finally {
-                    privateChatSendBtn.disabled = false;
-                    privateChatInput.disabled = false;
+    // دالة إرسال الرسالة الخاصة
+    const handlePrivateMessageSend = async (messageText, imageUrl = null) => {
+        if ((!messageText || messageText.trim() === '') && !imageUrl) return;
+        
+        try {
+            const senderId = localStorage.getItem('chatUserId');
+            const senderName = localStorage.getItem('chatUserName');
+            const senderAvatar = localStorage.getItem('chatUserAvatar');
+            
+            await sendPrivateMessage(senderId, senderName, senderAvatar, targetUserData.id, messageText, imageUrl);
+            
+            privateChatInput.value = '';
+        } catch (error) {
+            console.error("فشل إرسال الرسالة الخاصة:", error);
+            alert("فشل إرسال الرسالة الخاصة.");
+        }
+    };
+
+    // ربط زر الإرسال والنقر على Enter
+    privateChatSendBtn.addEventListener('click', () => handlePrivateMessageSend(privateChatInput.value.trim()));
+    privateChatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handlePrivateMessageSend(privateChatInput.value.trim());
+        }
+    });
+
+    // 1. ربط زر الإيموجي (بشكل مبدأي)
+    privateEmojiButton.addEventListener('click', () => {
+        alert('هنا سيتم فتح نافذة اختيار الإيموجي!');
+    });
+
+    // 2. ربط زر الزائد (+) لرفع الصور
+    privatePlusButton.addEventListener('click', () => {
+        privateImageUpload.click();
+    });
+
+    privateImageUpload.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        if (uploadProgressContainer && progressFill) {
+            uploadProgressContainer.style.display = 'flex';
+            progressFill.style.width = '0%';
+        }
+        
+        try {
+            const imageUrl = await uploadFileToCloudinary(file, (progress) => {
+                if (progressFill) {
+                    progressFill.style.width = `${progress}%`;
                 }
+            });
+
+            if (imageUrl) {
+                await handlePrivateMessageSend('', imageUrl);
             }
-        });
-        privateChatInput.addEventListener('keypress', async (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                privateChatSendBtn.click();
+        } catch (error) {
+            console.error('فشل رفع الصورة في الخاص:', error);
+            alert('فشل رفع الصورة. يرجى المحاولة مرة أخرى.');
+        } finally {
+            if (uploadProgressContainer) {
+                uploadProgressContainer.style.display = 'none';
             }
-        });
-    } else {
-        console.error("Failed to find private chat input elements. Check private chat dialog HTML structure.");
-    }
+            privateImageUpload.value = '';
+        }
+    });
+
+
+
+    // --- نهاية الكود المحدث ---
+
     hideUserInfoModal();
 }
 

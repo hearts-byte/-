@@ -461,8 +461,13 @@ export function getPrivateChatId(userId1, userId2) {
   return [userId1, userId2].sort().join('_');
 }
 
-export async function sendPrivateMessage(senderId, senderName, senderAvatar, receiverId, messageText, quotedData = null) {
-  if (!messageText || messageText.trim() === '') {
+// js/chat-firestore.js
+
+// ... (الكود السابق لا يتغير)
+
+export async function sendPrivateMessage(senderId, senderName, senderAvatar, receiverId, messageText, imageUrl = null, quotedData = null) {
+  // تعديل: السماح بإرسال صورة بدون نص
+  if ((!messageText || messageText.trim() === '') && !imageUrl) {
     return;
   }
   const chatId = getPrivateChatId(senderId, receiverId);
@@ -474,10 +479,16 @@ export async function sendPrivateMessage(senderId, senderName, senderAvatar, rec
     senderName,
     senderAvatar,
     receiverId,
-    text: messageText.trim(),
+    text: messageText ? messageText.trim() : '', // التأكد من وجود نص أو سلسلة فارغة
     timestamp: serverTimestamp(),
     type: 'private',
   };
+
+  // إضافة: تضمين رابط الصورة إذا وجد
+  if (imageUrl) {
+    newMessage.imageUrl = imageUrl;
+  }
+
   if (quotedData) {
     newMessage.quoted = quotedData;
   }
@@ -497,21 +508,24 @@ export async function sendPrivateMessage(senderId, senderName, senderAvatar, rec
   }
 }
 
-export function setupPrivateMessagesListener(currentUserId, targetUserId, messagesBoxElement, clearPrevious = true) {
-  if (clearPrevious) {
-    messagesBoxElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #888;">Loading private messages...</div>';
-  }
-  const chatId = getPrivateChatId(currentUserId, targetUserId);
+// ... (بقية الكود لا يتغير)
 
+// في ملف js/chat-firestore.js
+// ... (الكود السابق) ...
+
+export function setupPrivateMessagesListener(currentUserId, targetUserId, messagesBoxElement, clearPrevious = true) {
+  // ✨ تم إزالة clearPrevious وإضافة متغير لتتبع أول جلب للبيانات
+  let isFirstPrivateSnapshot = true;
   if (messagesBoxElement._privateChatUnsubscribe) {
     messagesBoxElement._privateChatUnsubscribe();
     messagesBoxElement._privateChatUnsubscribe = null;
   }
-  let isFirstPrivateSnapshot = true;
+  const chatId = getPrivateChatId(currentUserId, targetUserId);
   const messagesCol = collection(db, 'privateChats', chatId, 'messages');
   const messagesQuery = query(messagesCol, orderBy('timestamp', 'asc'));
 
   const unsubscribe = onSnapshot(messagesQuery, snapshot => {
+    // إذا كانت هذه أول مرة يتم فيها جلب البيانات، قم بمسح الصندوق
     if (isFirstPrivateSnapshot) {
       messagesBoxElement.innerHTML = '';
       if (snapshot.empty) {
@@ -530,7 +544,17 @@ export function setupPrivateMessagesListener(currentUserId, targetUserId, messag
           messageElement.classList.add('private-message-item');
           messageElement.setAttribute('data-id', messageData.id);
           messageElement.classList.add(isSentByMe ? 'sent' : 'received');
-          messageElement.textContent = messageData.text;
+
+          if (messageData.imageUrl) {
+            const imageElement = document.createElement('img');
+            imageElement.src = messageData.imageUrl;
+            imageElement.alt = 'Uploaded image';
+            imageElement.classList.add('private-chat-image'); 
+            messageElement.appendChild(imageElement);
+          } else if (messageData.text) {
+            messageElement.textContent = messageData.text;
+          }
+
           messagesBoxElement.appendChild(messageElement);
         }
         if (!isSentByMe) {
@@ -544,7 +568,11 @@ export function setupPrivateMessagesListener(currentUserId, targetUserId, messag
       } else if (change.type === 'modified') {
         const existingPrivateMessage = messagesBoxElement.querySelector(`.private-message-item[data-id="${messageData.id}"]`);
         if (existingPrivateMessage) {
-          existingPrivateMessage.textContent = messageData.text;
+          if (messageData.imageUrl) {
+            existingPrivateMessage.innerHTML = `<img src="${messageData.imageUrl}" alt="Uploaded image" class="private-chat-image">`;
+          } else {
+            existingPrivateMessage.textContent = messageData.text;
+          }
         }
       } else if (change.type === 'removed') {
         const existingPrivateMessage = messagesBoxElement.querySelector(`.private-message-item[data-id="${messageData.id}"]`);
