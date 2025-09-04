@@ -76,7 +76,7 @@ body {
   margin: 0 auto;
   background-color: #f0f2f5;
   box-sizing: border-box;
-  padding-top: 140px; /* ارتفاع الشريط العلوي */
+  padding-top: 130px; /* ارتفاع الشريط العلوي */
   padding-bottom: 110px; /* ارتفاع شريط الإدخال (60px) + الشريط السفلي (60px) */
   height: 100vh;
 }
@@ -484,7 +484,7 @@ body {
   width: 100%;
   z-index: 1000;
   box-sizing: border-box;
-  height: 70px;
+  height: 60px;
   overflow: hidden;
 }
 
@@ -515,7 +515,7 @@ body {
   aspect-ratio: 1 / 1;
   height: 100%;
   box-sizing: border-box;
-  font-size: 0.8em;
+  font-size: 0.75em;
   font-weight: 500;
   padding: 2px 0;
   border-radius: 8px;
@@ -533,10 +533,10 @@ body {
 .top-buttons .btn i, 
 .top-buttons .btn img, 
 .top-buttons .btn span {
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
-  margin-bottom: 2px;
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  margin-bottom: -5px;
 }
 
 /* **ألوان الأزرار كما هي** */
@@ -587,7 +587,7 @@ body {
 .private-chat-modal-strip {
   position: fixed; /* يبقى المودال ثابتاً في مكانه بالنسبة للشاشة */
   /* **الموضع الجديد للمودال: يمتد من تحت زر الخاص** */
-  top: 70px; /* يبدأ بعد الشريط العلوي مباشرة (ارتفاع الشريط العلوي) */
+  top: 60px; /* يبدأ بعد الشريط العلوي مباشرة (ارتفاع الشريط العلوي) */
   right: 15px; /* **المسافة من اليمين (يمكنك ضبطها لتناسب موقع زر الخاص)** */
   /* تم زيادة 'right' قليلاً لإبعاده عن الحافة */
   
@@ -946,22 +946,19 @@ body {
 /* ... (الأنماط الحالية لديك) ... */
 
 /* ---------------------------------------------------------------------- */
-/* أنماط مودال الدردشة الفردية الجديدة */
-/* ---------------------------------------------------------------------- */
-
-/* ---------------------------------------------------------------------- */
-/* أنماط مودال الدردشة الفردية الجديدة */
+/* أنماط مودال الدردشة الفردية الجديدة (محدثة) */
 /* ---------------------------------------------------------------------- */
 
 .private-chat-dialog {
+    /* الخصائص الحالية */
     position: fixed;
-    bottom: 60px; /* تم التعديل: يبدأ من فوق الشريط السفلي (بافتراض ارتفاعه 60px) */
+    bottom: 50px;
     left: 0;
     right: 0;
     width: 100%;
     max-width: 100%;
-    height: 60vh;
-    max-height: 85vh;
+    height: 55vh;
+    max-height: 80vh;
     background-color: #f9f9f9;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
@@ -971,20 +968,25 @@ body {
     flex-direction: column;
     overflow: hidden;
 
-    transform: translateY(100%);
-    transition: transform 0.3s ease-out;
+    /* ✨ التعديلات هنا: */
+    /* إزالة تأثير الانزلاق */
+    transform: none; 
+    /* إضافة تأثير شفافية وتوسيع بسيط */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    /* إخفاء النافذة في البداية */
+    opacity: 0;
+    visibility: hidden;
 }
 
 .private-chat-dialog.show {
-    transform: translateY(0);
+    /* ✨ التعديلات هنا: */
+    /* جعلها مرئية بالكامل */
+    opacity: 1;
+    visibility: visible;
+    /* إضافة تأثير توسيع بسيط عند الظهور */
+    transform: scale(1);
 }
 
-.private-chat-dialog-content {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-}
 
 /* ---------------------------------------------------------------------- */
 /* تعديل رأس المودال ليتناسب مع العرض الكامل */
@@ -993,8 +995,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 15px 15px; /* تم التعديل: زيادة المسافة الداخلية العلوية والسفلية */
-    background-color: #007bff;
+    padding: 6px 10px; /* تم التعديل: تصغير الشريط العلوي أكثر */
+    background-color: #4A148C;
     color: white;
     border-bottom: 1px solid #ddd;
     flex-direction: row;
@@ -1034,6 +1036,13 @@ body {
     padding: 0 5px;
     margin-left: 0;
 }
+
+/* كود إضافي لرفع زر التصغير - افترضنا وجود هذا الزر */
+.collapse-private-chat-btn {
+    position: relative;
+    top: -3px; /* رفع الزر قليلاً للأعلى */
+}
+
 
 .private-chat-messages {
     flex-grow: 1;
@@ -2924,4 +2933,83 @@ vertical-align: middle;
 .app-notification.hide {
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
+}
+
+/* style.css */
+
+/* أنماط إضافية لتوافق شريط الإدخال مع نافذة الدردشة الخاصة */
+
+/* إزالة الأنماط القديمة لمنطقة الإدخال الخاصة */
+.private-chat-input-area {
+    display: none;
+}
+
+/* تطبيق أنماط شريط الإدخال العام على النسخة الخاصة مع تعديلات */
+.private-chat-dialog .input-bar {
+    /* تجاوز الأنماط الخاصة بالموضع الثابت */
+    position: relative; /* بدلاً من fixed */
+    bottom: auto;
+    width: 100%; /* ليمتد بعرض الحاوية */
+    left: auto;
+    right: auto;
+    z-index: auto;
+    margin: 0; /* إزالة الهوامش الخارجية */
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05); /* ظل أخف */
+    border-top: 1px solid #eee;
+    height: auto; /* السماح للارتفاع بأن يكون تلقائياً */
+    padding: 8px; /* إضافة padding لتحسين المظهر */
+    box-sizing: border-box;
+}
+
+.private-chat-dialog .input-bar .input-field-container {
+    height: 40px;
+    padding: 0 15px;
+}
+
+.private-chat-dialog .input-bar .send-btn,
+.private-chat-dialog .input-bar .plus-btn-circle,
+.private-chat-dialog .input-bar .emoji-btn-circle {
+    box-shadow: none; /* إزالة الظل من الأزرار داخل الخاص */
+    border: 1px solid #ddd;
+}
+
+/* تنسيق الصور في الدردشة الخاصة */
+.private-chat-image {
+  width: 150px; /* أو أي عرض ثابت تفضله */
+  height: 150px; /* أو أي ارتفاع ثابت تفضله */
+  border-radius: 8px; /* للحصول على حواف دائرية */
+  margin-top: 8px; /* للحفاظ على المسافة */
+  object-fit: cover; /* لضمان ملء الصورة للمساحة دون تشوه */
+}
+
+/* تنسيق حقل الإدخال في الدردشة الخاصة */
+.private-chat-dialog #private-message-input {
+  flex-grow: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px; /* تم تقليل المسافة الداخلية هنا */
+  font-size: 14px; /* تم تصغير حجم الخط */
+  color: #333;
+  outline: none;
+  font-family: inherit;
+}
+
+/* ---------------------------------------------------------------------- */
+/* أنماط دائرة التحميل (Loading Spinner) */
+/* ---------------------------------------------------------------------- */
+
+.private-chat-loader {
+  display: none; /* إخفاؤها في البداية */
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #888;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite; /* تأثير الدوران */
+  margin: 20px auto; /* لتوسيطها */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
