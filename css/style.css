@@ -585,28 +585,29 @@ body {
 /* Private Chat Modal Strip */
 /* Private Chat Modal Strip */
 .private-chat-modal-strip {
-  position: fixed; /* يبقى المودال ثابتاً في مكانه بالنسبة للشاشة */
-  /* **الموضع الجديد للمودال: يمتد من تحت زر الخاص** */
-  top: 60px; /* يبدأ بعد الشريط العلوي مباشرة (ارتفاع الشريط العلوي) */
-  right: 15px; /* **المسافة من اليمين (يمكنك ضبطها لتناسب موقع زر الخاص)** */
-  /* تم زيادة 'right' قليلاً لإبعاده عن الحافة */
-  
-  background-color: #fff;
-  border-radius: 10px; /* حواف مستديرة للمودال */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* ظل المودال */
+  position: fixed;
+  top: 40px;
+  right: 5px;
+  background-color: #fff;  /* ✨ أضف هذا السطر ✨ */
+  border-radius: 10px;
+  /* ... بقية الكود ... */
+
+  box-shadow: none; /* ظل المودال */
   z-index: 1001; /* تأكد من أنه يظهر فوق العناصر الأخرى */
   
   /* **خصائص جعل المودال كبيراً ولكن بحجم معتدل** */
-  width: 90%; /* **عرض المودال، 90% من عرض النافذة** */
-  max-width: 350px; /* **الحد الأقصى للعرض (تم تقليله من 400px)** */
+  /* **خصائص جعل المودال أصغر حجماً** */
+width: 85%; /* يمكنك تقليل هذه النسبة أيضاً */
+max-width: 300px; /* **القيمة الجديدة للحد الأقصى للعرض** */
   height: auto; /* الارتفاع يتحدد تلقائياً بناءً على المحتوى */
-  max-height: calc(100vh - 100px); /* **الحد الأقصى للارتفاع (تم تقليله من 80px إلى 100px)** */
+  max-height: calc(100vh - 100px - 85px);
+ /* **الحد الأقصى للارتفاع (تم تقليله من 80px إلى 100px)** */
   /* هذا يترك مساحة أكبر في الأسفل و الأعلى */
 
   overflow-y: auto; /* لإضافة شريط تمرير عمودي إذا كان المحتوى يتجاوز الارتفاع الأقصى */
   
   display: none; /* مخفي افتراضياً، سيتم إظهاره بالـ JS */
-  padding: 15px; /* هامش داخلي */
+  padding: 0px; /* هامش داخلي */
   transform-origin: top right; /* لتأثير الحركة يبدأ من الزاوية العلوية اليمنى */
   animation: fadeInFromTopRight 0.2s ease-out; /* اسم الحركة */
 }
@@ -660,10 +661,10 @@ body {
     list-style: none;
     padding: 0;
     margin: 0;
-    max-height: 300px; /* ارتفاع أقصى للسماح بالتمرير */
     overflow-y: auto; /* تمكين التمرير عند تجاوز المحتوى للارتفاع الأقصى */
-    flex-grow: 1; /* ليأخذ المساحة المتاحة بعد الـ header */
-    padding-bottom: 5px; /* مسافة داخلية من الأسفل */
+    /* ليأخذ المساحة المتاحة بعد الـ header */
+     /* مسافة داخلية من الأسفل */
+    max-height: 500px; 
 }
 
 /* تعديل الـ keyframes لتناسب الموضع الجديد */
@@ -738,6 +739,36 @@ body {
     color: #888;
     z-index: 10; 
 }
+
+/* ... (الكود الموجود مسبقاً) ... */
+
+/* تنسيق رسالة "صندوق رسائلك فارغ" مع الصورة */
+.private-chat-modal-strip .empty-chat-message {
+    display: flex; /* لجعل العناصر (الصورة والنص) تترتب عمودياً */
+    flex-direction: column; /* لترتيب العناصر عمودياً */
+    align-items: center; /* توسيط العناصر أفقياً */
+    justify-content: center; /* توسيط العناصر عمودياً (إذا كان هناك مساحة كافية) */
+    text-align: center;
+    padding: 20px 10px; /* مسافة داخلية أكبر */
+    color: #888;
+    min-height: 150px; /* لتوفير مساحة كافية للصورة والنص */
+}
+
+.private-chat-modal-strip .empty-chat-icon {
+    width: 50px; /* حجم الصورة */
+    height: 50px;
+    object-fit: contain; /* للتأكد من أن الصورة تظهر بالكامل دون قص */
+    margin-bottom: 0px; /* مسافة بين الصورة والنص */
+     /* لجعل الصورة أبهت قليلاً */
+}
+
+.private-chat-modal-strip .empty-chat-message p {
+    margin: 0; /* إزالة الهامش الافتراضي للفقرة */
+    font-size: .8em;
+    line-height: 1.4;
+}
+
+/* ... (بقيه الكود) ... */
 
 /* **تعديل الـ media queries لتناسب الحجم الجديد** */
 @media (max-width: 768px) {
@@ -825,9 +856,9 @@ body {
     padding: 15px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     text-align: center;
-    width: 240px;
-    max-width: 240px;
-    max-height: 380px;
+    width: 220px;
+    max-width: 250px;
+    max-height: 350px;
     overflow-y: auto;
     color: #333;
     position: relative;
@@ -835,13 +866,13 @@ body {
 
 .user-info-modal .user-profile-header {
     width: 100%; /* ✨ الآن يملأ عرض النافذة بالكامل */
-    height: 220px;
+    height: 210px;
     position: absolute; /* ✨ تموضع مطلق */
     top: 0; /* ✨ يبدأ من أعلى النافذة */
     left: 0;
     overflow: hidden;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
     z-index: 1; /* ✨ z-index منخفض ليكون في الخلف */
 }
 
@@ -897,10 +928,28 @@ body {
 /* الأنماط الأخرى كما هي */
 
 
-.user-info-modal .user-rank-info {
-    z-index: 2; /* ✨ تم إضافة هذا السطر لرفع الرتبة إلى طبقة أعلى */
-    position: relative;
+/* الأنماط الأخرى لم تتغير */
+
+/* ✨ هذا هو الكود الجديد الذي يجب إضافته أو تعديله */
+.user-info-modal .user-age-gender-info {
+    font-size: 0.8em; /* لجعل الخط أصغر قليلاً */
+    color: #fff; /* لون رمادي فاتح */
+    margin-top: 5px; /* مسافة صغيرة من العنصر الذي فوقه */
+    margin-bottom: 0px; /* مسافة صغيرة من العنصر الذي تحته */
+    z-index: 2; /* تأكد من أن العنصر في طبقة أعلى */
+    position: relative; /* ليتأثر بالـ z-index */
+    transform: translateY(-30px); 
 }
+
+/* قم بتعديل هذا الكود لرفع أيقونة الرتبة */
+.user-info-modal .user-rank-info {
+    z-index: 2;
+    position: relative;
+    /* يمكنك إزالة transform: translateY إذا كان يسبب مشاكل في التخطيط */
+     transform: translateY(-20px); 
+}
+
+
 
 .user-info-modal .user-name-display {
     font-weight: bold;
@@ -920,8 +969,8 @@ body {
     flex-direction: column;
     gap: 10px;
     border-top: 1px solid #eee;
-    padding-top: 20px;
-    margin-top: 20px;
+    padding-top: -20px;
+    margin-top: -20px;
 }
 
 .user-info-modal .modal-button {
@@ -3007,6 +3056,28 @@ vertical-align: middle;
   height: 20px;
   animation: spin 1s linear infinite; /* تأثير الدوران */
   margin: 20px auto; /* لتوسيطها */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* تنسيقات دائرة التحميل */
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 4px solid #f3f3f3; /* لون الدائرة الخارجي */
+  border-top: 4px solid #888; /* لون الدائرة المتحرك */
+  border-radius: 50%; /* لجعلها دائرية */
+  animation: spin 1s linear infinite; /* تحريك الدائرة */
 }
 
 @keyframes spin {
