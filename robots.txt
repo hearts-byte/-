@@ -1,0 +1,6 @@
+# السماح لكل محركات البحث بفهرسة الموقع
+User-agent: *
+Allow: /
+
+# رابط خريطة الموقع
+Sitemap: http://www.qalob.page.gd/sitemap.xml
