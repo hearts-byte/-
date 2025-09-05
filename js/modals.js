@@ -1014,8 +1014,12 @@ export function showNotificationsModal() {
                 <h3>الإشعارات</h3>
                 <button class="close-btn">&times;</button>
             </div>
-            <div class="notifications-list">
-                <div class="empty-state">لا يوجد إشعارات حاليًا.</div>
+            <div class="notifications-content">
+                <div class="empty-state">
+                    <img src="nodata.png" alt="لا توجد إشعارات" class="empty-state-image">
+                    <p>لا يوجد إشعارات حاليًا.</p>
+                </div>
+                <div class="notifications-list"></div>
             </div>
         </div>
     `;
@@ -1045,7 +1049,7 @@ export function showNotificationsModal() {
     );
     
     window.notificationsModalUnsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
-        notificationsList.innerHTML = '';
+        notificationsList.innerHTML = ''; 
         const unreadNotifications = [];
         
         if (snapshot.empty) {
@@ -1055,7 +1059,6 @@ export function showNotificationsModal() {
             snapshot.forEach((doc) => {
                 const notification = doc.data();
                 const notificationElement = document.createElement('div');
-                // هذا السطر يضيف كلاس "unread" إذا كان الإشعار غير مقروء
                 notificationElement.className = `notification-item ${notification.read ? '' : 'unread'}`;
                 const timestamp = notification.timestamp ? notification.timestamp.toDate().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
                 
@@ -1074,13 +1077,11 @@ export function showNotificationsModal() {
                 `;
                 notificationsList.appendChild(notificationElement);
 
-                // أضف الإشعارات غير المقروءة إلى المصفوفة
                 if (!notification.read) {
                     unreadNotifications.push(doc.ref);
                 }
             });
 
-            // إذا كان هناك إشعارات غير مقروءة، قم بتحديثها إلى مقروءة
             if (unreadNotifications.length > 0) {
                 const batch = writeBatch(db);
                 unreadNotifications.forEach(ref => {
@@ -1110,6 +1111,7 @@ export function showNotificationsModal() {
         }
     }, 10);
 }
+
 
 // ... (الكود التالي)
 

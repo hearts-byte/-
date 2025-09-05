@@ -359,44 +359,40 @@ export function showCommandsModal(userData = {}, onRankChange) {
               }
  
               let muteUntil;
-              let muteText;
  
               if (muteDuration === 'permanent') {
                 muteUntil = 'permanent';
-                muteText = `تم كتم المستخدم ${userData.name} بشكل دائم.`;
               } else {
                 const durationMs = parseInt(muteDuration, 10);
                 muteUntil = Date.now() + durationMs;
-                muteText = `تم كتم المستخدم ${userData.name} لمدة ${durationSelect.options[durationSelect.selectedIndex].text}.`;
               }
  
-              // ... (الكود السابق) ...
-try {
-    await updateDoc(userDocRef, {
-        isMuted: true,
-        mutedUntil: muteUntil,
-        mutedBy: currentUserName
-    });
-
-    // استدعاء دالة التنبيه
-    showNotification(`تم كتم المستخدم ${userData.name} بنجاح.`);
-
-    await sendSystemMessage({
-        text: muteText,
-        type: 'mute'
-    }, currentRoomId);
-
-    await addNotification(`تم كتمك بواسطة ${currentUserName}، لن تتمكن من الكتابة في الدردشة.`, SYSTEM_USER, userIdToMute);
-
-    // احذف هذا السطر
-    // alert('تم كتم المستخدم بنجاح!');
-
-    close();
-} catch (e) {
-    console.error('Error muting user: ', e);
-    alert('حدث خطأ أثناء محاولة الكتم.');
-}
-};
+              // 💡 تم توحيد قيمة muteText هنا لتظهر نفس الرسالة في كل الحالات
+              const muteText = `${userData.name} تم الكتم.`;
+ 
+              try {
+                await updateDoc(userDocRef, {
+                    isMuted: true,
+                    mutedUntil: muteUntil,
+                    mutedBy: currentUserName
+                });
+ 
+                // استدعاء دالة التنبيه
+                showNotification(`تم كتم المستخدم ${userData.name} بنجاح.`);
+ 
+                await sendSystemMessage({
+                    text: muteText,
+                    type: 'mute'
+                }, currentRoomId);
+ 
+                await addNotification(`تم كتمك بواسطة ${currentUserName}، لن تتمكن من الكتابة في الدردشة.`, SYSTEM_USER, userIdToMute);
+ 
+                close();
+              } catch (e) {
+                console.error('Error muting user: ', e);
+                alert('حدث خطأ أثناء محاولة الكتم.');
+              }
+            };
           }
         });
         return;
@@ -414,7 +410,7 @@ try {
     link.href = 'styles/commands-modal.css';
     document.head.appendChild(link);
   }
- 
+
   setTimeout(() => {
     modal.classList.add('show');
     overlay.classList.add('show');

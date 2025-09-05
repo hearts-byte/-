@@ -186,26 +186,35 @@ async function createPrivateChatModal(buttonElement) {
             <h3>الرسائل الخاصة</h3>
             <button class="close-btn">&times;</button>
         </div>
-        <ul class="private-chat-list"><li style="text-align: center; padding: 10px; color: #888;">جاري تحميل جهات الاتصال...</li></ul>
+        <ul class="private-chat-list">
+            <div class="spinner-container">
+                <div class="loading-spinner"></div>
+            </div>
+        </ul>
     `;
     document.body.appendChild(privateChatModal);
 
     const buttonRect = buttonElement.getBoundingClientRect();
     const modalWidth = 200;
     const topBarElement = document.querySelector('.top-bar');
+    const inputBarElement = document.querySelector('.bottom-bar');
     const topBarHeight = topBarElement ? topBarElement.offsetHeight : 0;
-    const padding = 10;
+    const inputBarHeight = inputBarElement ? inputBarElement.offsetHeight : 0;
+    const padding = 5;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
     let modalLeft = buttonRect.right - modalWidth;
     let modalTop = buttonRect.bottom + padding;
+
     if (modalLeft < padding) modalLeft = padding;
     if (modalLeft + modalWidth > viewportWidth - padding) modalLeft = viewportWidth - modalWidth - padding;
-    if (modalTop + privateChatModal.clientHeight > viewportHeight - padding) {
-        modalTop = viewportHeight - privateChatModal.clientHeight - padding;
-        if (modalTop < topBarHeight + padding) modalTop = topBarHeight + padding;
-    }
+    if (modalTop < topBarHeight + padding) modalTop = topBarHeight + padding;
+
+    const maxModalHeight = viewportHeight - modalTop - inputBarHeight - (2 * padding);
+    privateChatModal.style.maxHeight = `${maxModalHeight}px`;
+    privateChatModal.style.overflowY = 'auto';
+
     privateChatModal.style.left = `${modalLeft}px`;
     privateChatModal.style.top = `${modalTop}px`;
     privateChatModal.classList.add('show');
@@ -219,7 +228,13 @@ async function createPrivateChatModal(buttonElement) {
             const contacts = await getPrivateChatContacts(currentUserId);
             ulElement.innerHTML = '';
             if (contacts.length === 0) {
-                ulElement.innerHTML = `<li style="text-align: center; padding: 10px; color: #888;">لا توجد محادثات خاصة بعد.</li>`;
+                // ✨ التعديل هنا: إضافة الصورة داخل الـ li
+                ulElement.innerHTML = `
+                    <li class="empty-chat-message">
+                        <img src="nodata.png" alt="صندوق رسائل فارغ" class="empty-chat-icon">
+                        <p>صندوق رسائلك فارغ</p>
+                    </li>
+                `;
             } else {
                 contacts.sort((a, b) => b.unreadCount - a.unreadCount);
                 contacts.forEach(contact => {
@@ -592,29 +607,24 @@ export async function checkMuteStatusAndUpdateUI() {
     const currentUserId = localStorage.getItem('chatUserId');
     if (!currentUserId) return;
 
-    // استهداف حقل الإدخال وزر الإرسال مباشرةً
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.querySelector('.send-btn');
-    const emojiButton = document.querySelector('.emoji-btn-circle');
-    const plusButton = document.getElementById('plus-btn-toggle');
-    const imageUpload = document.getElementById('image-upload-input');
-
-document.addEventListener('DOMContentLoaded', () => {
-    // ... (الكود السابق) ...
-
+    // عناصر واجهة المستخدم للدردشة العامة
     const mainMessageInput = document.getElementById('message-input');
     const mainSendButton = document.querySelector('.send-btn');
     const mainEmojiButton = document.querySelector('.emoji-btn-circle');
     const mainPlusButton = document.getElementById('plus-btn-toggle');
     const mainImageUpload = document.getElementById('image-upload-input');
 
-    // استدعاء الدالة للدردشة العامة
-    checkMuteStatusAndUpdateUI(mainMessageInput, mainSendButton, mainEmojiButton, mainPlusButton, mainImageUpload);
-});
-
-
-    if (!messageInput || !sendButton || !emojiButton || !plusButton || !imageUpload) {
-        console.error('فشل في العثور على أحد عناصر واجهة المستخدم.');
+    // عناصر واجهة المستخدم للدردشة الخاصة
+    const privateMessageInput = document.getElementById('private-message-input');
+    const privateSendButton = document.getElementById('private-send-btn');
+    const privateEmojiButton = document.getElementById('private-emoji-btn');
+    // 👇🏻 هذا هو السطر الذي يجب تعديله. يجب أن يتطابق مع الـ ID الفعلي.
+    const privatePlusButton = document.getElementById('private-plus-btn-toggle'); 
+    const privateImageUpload = document.getElementById('private-image-upload');
+    
+    // تأكد من أن الكود لا ينهار إذا لم يتم العثور على أي عنصر
+    if (!mainMessageInput && !privateMessageInput) {
+        console.error('فشل في العثور على أي من حقول إدخال الدردشة.');
         return;
     }
 
@@ -632,42 +642,47 @@ document.addEventListener('DOMContentLoaded', () => {
             const isMuted = userData.isMuted || false;
             const mutedUntil = userData.mutedUntil;
 
-            if (isMuted) {
-                if (mutedUntil !== 'permanent' && mutedUntil < Date.now()) {
-                    await updateDoc(userDocRef, { isMuted: false, mutedUntil: null });
-                    // استعادة العناصر لوضعها الطبيعي
-                    messageInput.placeholder = 'اكتب هنا...';
-                    messageInput.disabled = false;
-                    sendButton.disabled = false;
-                    emojiButton.disabled = false;
-                    plusButton.disabled = false;
-                    imageUpload.disabled = false;
-                } else {
-                    // المستخدم مكتوم
-                    messageInput.value = '';
-                    messageInput.placeholder = 'الدردشة مقفلة';
-                    messageInput.disabled = true; // تعطيل حقل الإدخال
-                    sendButton.disabled = true; // تعطيل زر الإرسال
-                    emojiButton.disabled = true; // تعطيل زر الإيموجي
-                    plusButton.disabled = true; // تعطيل زر الـ plus
-                    imageUpload.disabled = true; // تعطيل زر تحميل الصورة
+            let isMutedNow = isMuted;
+            if (isMuted && mutedUntil !== 'permanent' && mutedUntil < Date.now()) {
+                await updateDoc(userDocRef, { isMuted: false, mutedUntil: null });
+                isMutedNow = false;
+            }
+
+            const applyMuteRestrictions = (input, send, emoji, plus, image) => {
+                if (input) {
+                    input.disabled = true;
+                    input.placeholder = 'الدردشة مقفلة';
+                    input.value = '';
                 }
+                if (send) send.disabled = true;
+                if (emoji) emoji.disabled = true;
+                if (plus) plus.disabled = true;
+                if (image) image.disabled = true;
+            };
+
+            const removeMuteRestrictions = (input, send, emoji, plus, image) => {
+                if (input) {
+                    input.disabled = false;
+                    input.placeholder = 'اكتب هنا...';
+                }
+                if (send) send.disabled = false;
+                if (emoji) emoji.disabled = false;
+                if (plus) plus.disabled = false;
+                if (image) image.disabled = false;
+            };
+
+            if (isMutedNow) {
+                applyMuteRestrictions(mainMessageInput, mainSendButton, mainEmojiButton, mainPlusButton, mainImageUpload);
+                applyMuteRestrictions(privateMessageInput, privateSendButton, privateEmojiButton, privatePlusButton, privateImageUpload);
             } else {
-                // المستخدم غير مكتوم
-                messageInput.placeholder = 'اكتب هنا...';
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-                emojiButton.disabled = false;
-                plusButton.disabled = false;
-                imageUpload.disabled = false;
+                removeMuteRestrictions(mainMessageInput, mainSendButton, mainEmojiButton, mainPlusButton, mainImageUpload);
+                removeMuteRestrictions(privateMessageInput, privateSendButton, privateEmojiButton, privatePlusButton, privateImageUpload);
             }
         }
     } catch (error) {
         console.error("خطأ في التحقق من حالة الكتم:", error);
     }
 }
-
-
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent("top-bar", "components/top-bar.html");

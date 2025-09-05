@@ -137,6 +137,11 @@ userInfoModal.innerHTML = `
   <div class="user-info-group">
     <div class="user-name-display">${userData.name}</div>
     ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
+    <p class="user-age-gender-info">
+      ${userData.age ? `العمر: ${userData.age}` : ''}
+      ${userData.age && userData.gender ? ' | ' : ''}
+      ${userData.gender ? `الجنس: ${userData.gender}` : ''}
+    </p>
     <div class="modal-buttons">
       <button class="modal-button view-profile"><i class="fa-solid fa-user"></i> عرض الملف الشخصي</button>
       <button class="modal-button start-private"><i class="fa-solid fa-envelope"></i> رسالة</button>
