@@ -119,6 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!userSnapshot.empty) return true;
     return false;
   }
+  
+  // دالة لتوليد أربعة أرقام عشوائية
+  function generateRandomFourDigits() {
+  const randomNumber = Math.floor(Math.random() * 9000) + 1000;
+  return randomNumber;
+}
 
   // ================= دخول الزوار ==================
   visitorForm.addEventListener('submit', async (event) => {
@@ -155,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('chatUserAvatar', DEFAULT_VISITOR_AVATAR);
       localStorage.setItem('chatUserRank', userRank);
 
-            localStorage.setItem('fromRegistrationPage', 'true');
+      localStorage.setItem('fromRegistrationPage', 'true');
       window.location.href = 'rooms.html';
 
     } catch (error) {
@@ -164,74 +170,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ================= تسجيل عضوية جديدة ==================
-  registerForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const registerName = document.getElementById('registerName').value.trim();
-    const registerEmail = document.getElementById('registerEmail').value.trim();
-    const registerPassword = document.getElementById('registerPassword').value;
-    const registerAge = document.getElementById('registerAge').value;
-    const registerGender = document.getElementById('registerGender').value;
-    const userRank = 'عضو';
+// ================= تسجيل عضوية جديدة ==================
+registerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const registerName = document.getElementById('registerName').value.trim();
+  const registerPassword = document.getElementById('registerPassword').value;
+  const registerAge = document.getElementById('registerAge').value;
+  const registerGender = document.getElementById('registerGender').value;
+  const userRank = 'عضو';
+  
+  // توليد بريد إلكتروني تلقائي
+  const randomDigits = generateRandomFourDigits();
+  const registerEmail = `user_${randomDigits}@gmail.com`;
 
-    if (registerName === '' || registerEmail === '' || registerPassword === '' || registerAge === '' || registerGender === '') {
-      showMessage('يرجى ملء جميع الحقول لإنشاء حساب جديد.', 'error');
+  if (registerName === '' || registerPassword === '' || registerAge === '' || registerGender === '') {
+    showMessage('يرجى ملء جميع الحقول لإنشاء حساب جديد.', 'error');
+    return;
+  }
+
+  try {
+    if (await isUsernameTaken(registerName)) {
+      showMessage('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.', 'error');
       return;
     }
+    // إنشاء الحساب في Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+    const userId = userCredential.user.uid;
 
-    try {
-      if (await isUsernameTaken(registerName)) {
-        showMessage('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.', 'error');
-        return;
-      }
-      // إنشاء الحساب في Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
-      const userId = userCredential.user.uid;
+    // حفظ بيانات المستخدم في Firestore
+    await setDoc(doc(db, 'users', userId), {
+      username: registerName,
+      email: registerEmail,
+      age: registerAge,
+      gender: registerGender,
+      timestamp: serverTimestamp(),
+      userType: 'registered',
+      avatar: DEFAULT_USER_AVATAR,
+      rank: userRank,
+      level: 1,
+      totalExp: 0,
+      currentExp: 0,
+      expToNextLevel: 200,
+      likes: []
+    });
 
-      // حفظ بيانات المستخدم في Firestore
-      await setDoc(doc(db, 'users', userId), {
-        username: registerName,
-        email: registerEmail,
-        age: registerAge,
-        gender: registerGender,
-        timestamp: serverTimestamp(),
-        userType: 'registered',
-        avatar: DEFAULT_USER_AVATAR,
-        rank: userRank,
-        level: 1,
-        totalExp: 0,
-        currentExp: 0,
-        expToNextLevel: 200,
-        likes: []
-      });
+    localStorage.setItem('chatUserName', registerName);
+    localStorage.setItem('userType', 'registered');
+    localStorage.setItem('chatUserId', userId);
+    localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
+    localStorage.setItem('chatUserRank', userRank);
 
-      localStorage.setItem('chatUserName', registerName);
-      localStorage.setItem('userType', 'registered');
-      localStorage.setItem('chatUserId', userId);
-      localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
-      localStorage.setItem('chatUserRank', userRank);
+    localStorage.setItem('fromRegistrationPage', 'true');
+    window.location.href = 'rooms.html';
 
-            localStorage.setItem('fromRegistrationPage', 'true');
-      window.location.href = 'rooms.html';
-
-    } catch (error) {
-      console.error("خطأ أثناء تسجيل الحساب:", error);
-      if (error.code === 'auth/email-already-in-use') {
-        showMessage('هذا البريد الإلكتروني مرتبط بحساب آخر بالفعل. يمكنك تسجيل الدخول أو استخدام بريد مختلف.', 'error');
-      } else if (error.code === 'auth/weak-password') {
-        showMessage('كلمة المرور ضعيفة. يجب أن تحتوي على 6 أحرف على الأقل.', 'error');
-      } else if (error.code === 'auth/invalid-email') {
-        showMessage('صيغة البريد الإلكتروني غير صحيحة. يرجى التأكد من كتابته بشكل صحيح.', 'error');
-      } else {
-        showMessage('حدث خطأ غير متوقع أثناء التسجيل. يرجى إعادة المحاولة أو التواصل مع الدعم الفني.', 'error');
-      }
+  } catch (error) {
+    console.error("خطأ أثناء تسجيل الحساب:", error);
+    if (error.code === 'auth/weak-password') {
+      showMessage('كلمة المرور ضعيفة. يجب أن تحتوي على 6 أحرف على الأقل.', 'error');
+    } else {
+      showMessage('حدث خطأ غير متوقع أثناء التسجيل. يرجى إعادة المحاولة أو التواصل مع الدعم الفني.', 'error');
     }
-  });
+  }
+});
 
   // ================= دخول الأعضاء ==================
   memberForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const memberInput = document.getElementById('memberName').value.trim(); // يقبل اسم مستخدم أو بريد إلكتروني
+    const memberInput = document.getElementById('memberName').value.trim();
     const memberPassword = document.getElementById('memberPassword').value;
 
     if (memberInput === '' || memberPassword === '') {
@@ -241,11 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let emailToUse = '';
 
-    // تحقق إذا كان المدخل بريد إلكتروني
     if (memberInput.includes('@')) {
       emailToUse = memberInput;
     } else {
-      // ابحث عن البريد الإلكتروني عبر اسم المستخدم من Firestore
       try {
         const usersQuery = query(
           collection(db, 'users'),
@@ -268,11 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // تسجيل الدخول عبر Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, emailToUse, memberPassword);
       const userId = userCredential.user.uid;
 
-      // جلب بيانات المستخدم من Firestore
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (!userDoc.exists()) {
         showMessage('بيانات الحساب غير متوفرة حالياً. يرجى التواصل مع الدعم الفني.', 'error');
@@ -288,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('chatUserAvatar', userAvatar);
       localStorage.setItem('chatUserRank', userRank);
 
-            localStorage.setItem('fromRegistrationPage', 'true');
+      localStorage.setItem('fromRegistrationPage', 'true');
       window.location.href = 'chat.html';
 
     } catch (error) {

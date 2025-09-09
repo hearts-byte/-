@@ -1,6 +1,8 @@
 // js/extra-modals.js
 
 import { updateUserData } from './chat-firestore.js';
+import { auth } from './firebase-config.js';
+import { updateEmail } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -281,18 +283,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (currentUserId) {
                     try {
-                        await updateUserData(currentUserId, { email: newEmail });
-                        const currentUserIndex = window.allUsersAndVisitorsData.findIndex(u => u.id === currentUserId);
-                        if (currentUserIndex !== -1) {
-                            window.allUsersAndVisitorsData[currentUserIndex].email = newEmail;
-                        }
-                        showCustomAlert('تم حفظ البريد الإلكتروني بنجاح.');
-                        hideModal();
-                    } catch (error) {
-                        console.error("فشل تحديث البريد الإلكتروني:", error);
-                        showCustomAlert('حدث خطأ أثناء حفظ البريد الإلكتروني.', 'error');
-                    }
-                }
+    const user = auth.currentUser;
+    if (user) {
+        await updateEmail(user, newEmail);
+        await updateUserData(currentUserId, { email: newEmail });
+        const currentUserIndex = window.allUsersAndVisitorsData.findIndex(u => u.id === currentUserId);
+        if (currentUserIndex !== -1) {
+            window.allUsersAndVisitorsData[currentUserIndex].email = newEmail;
+        }
+        showCustomAlert('تم حفظ البريد الإلكتروني بنجاح.');
+        hideModal();
+    }
+} catch (error) {
+    console.error("فشل تحديث البريد الإلكتروني:", error);
+    if (error.code === 'auth/invalid-email') {
+        showCustomAlert('صيغة البريد الإلكتروني غير صحيحة.', 'error');
+    } else if (error.code === 'auth/requires-recent-login') {
+        showCustomAlert('يجب عليك تسجيل الدخول مرة أخرى لتأكيد التغييرات.', 'error');
+    } else if (error.code === 'auth/email-already-in-use') {
+         showCustomAlert('هذا البريد الإلكتروني مستخدم بالفعل.', 'error');
+    } else {
+        showCustomAlert('حدث خطأ أثناء حفظ البريد الإلكتروني.', 'error');
+    }
+}
+}
             });
         }
         if (user) {

@@ -1,15 +1,19 @@
 import { getPrivateChatId, sendPrivateMessage, setupPrivateMessagesListener } from './chat-firestore.js';
 import { db, serverTimestamp, auth } from './firebase-config.js';
 import {
+  collection,
   doc,
   setDoc,
-  collection,
+  getDoc,
+  getDocs,
   query,
   where,
-  getDocs,
-  limit
+  limit,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  createUserWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showCommandsModal } from './chat-commands-modal.js';
 import { checkMuteStatusAndUpdateUI } from './main.js';
@@ -125,13 +129,15 @@ export function createUserInfoModal(targetElement, userData, allUsersAndVisitors
     viewerIsVisitor = true;
   }
 
- userInfoModal = document.createElement('div');
+// الكود الأول: JavaScript
+userInfoModal = document.createElement('div');
 userInfoModal.classList.add('user-info-modal');
 userInfoModal.innerHTML = `
 <div class="modal-content">
   <span class="close-button">&times;</span>
   <div class="user-profile-header">
     <img src="${userData.innerImage || 'images/Interior.png'}" alt="صورة الخلفية" class="profile-header-image">
+    <div class="overlay"></div>
   </div>
   <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name}" class="user-avatar-large">
   <div class="user-info-group">
@@ -151,8 +157,6 @@ userInfoModal.innerHTML = `
 </div>
 `;
 
-
-// ... (داخل دالة createUserInfoModal)
 
 // تحديد هوية المستخدم الحالي
 
@@ -243,6 +247,7 @@ if (commandsButton) {
     }
   }
 }
+
 
 function handleUserInfoModalOutsideClick(event) {
   const isClickedInsideModal = window.userInfoModal && window.userInfoModal.contains(event.target);
@@ -882,12 +887,10 @@ export function showImageInModal(imageUrl) {
     }
   }
 }
+// js/chat-ui.js
+// js/chat-ui.js
 
 // دالة لإضافة زر التسجيل في الشريط السفلي للزوار
-// دالة لإضافة زر التسجيل في الشريط السفلي للزوار
-// في ملف js/chat-ui.js
-// ... (بقية الكود السابق)
-
 export function addRegistrationButtonToBottomBar(userRank) {
     const bottomBar = document.querySelector('.bottom-bar');
     const existingBtn = document.querySelector('.bottom-bar .registration-btn');
@@ -904,7 +907,6 @@ export function addRegistrationButtonToBottomBar(userRank) {
             `;
 
             registerButton.addEventListener('click', () => {
-                // ✨ استبدال alert() باستدعاء دالتنا الجديدة
                 showRegistrationModal();
             });
 
@@ -917,9 +919,6 @@ export function addRegistrationButtonToBottomBar(userRank) {
     }
 }
 
-
-// في ملف js/chat-ui.js
-// في ملف js/chat-ui.js
 
 export const registerModalHTML = `
 <div class="registration-modal-content">
@@ -948,11 +947,14 @@ export const registerModalHTML = `
 let registrationModal = null;
 
 
-// في ملف js/chat-ui.js
-// ... (بقية الكود السابق)
+// ✨ دالة جديدة لتوليد أربعة أرقام عشوائية
+function generateRandomFourDigits() {
+  // Math.random() يولد رقم عشري بين 0 (شامل) و 1 (غير شامل)
+  // نضربه في 9000 ثم نضيف 1000 لضمان أن يكون الرقم بين 1000 و 9999
+  const randomNumber = Math.floor(Math.random() * 9000) + 1000;
+  return randomNumber;
+}
 
-// في ملف js/chat-ui.js
-// ... (بقية الكود)
 
 export function showRegistrationModal() {
   if (registrationModal) {
@@ -963,7 +965,7 @@ export function showRegistrationModal() {
   registrationModal.classList.add('registration-modal');
   registrationModal.innerHTML = registerModalHTML;
   document.body.appendChild(registrationModal);
-  
+
   setTimeout(() => {
     registrationModal.classList.add('show');
   }, 10);
@@ -974,8 +976,10 @@ export function showRegistrationModal() {
 
   if (usernameInput && currentUserName) {
     usernameInput.value = currentUserName;
-    const sanitizedName = currentUserName.toLowerCase().replace(/\s/g, '');
-    const defaultEmail = `${sanitizedName}@example.com`;
+
+    // ✨ تحديث توليد البريد الإلكتروني التلقائي
+    const randomDigits = generateRandomFourDigits();
+    const defaultEmail = `user_${randomDigits}@gmail.com`;
     emailInput.value = defaultEmail;
   }
 
@@ -989,7 +993,6 @@ export function showRegistrationModal() {
     }
   });
 
-  // ✨ ربط النموذج بالدالة الجديدة
   registrationModal.querySelector('#registrationForm').addEventListener('submit', async (event) => {
     event.preventDefault();
     const username = registrationModal.querySelector('#reg-username').value.trim();
@@ -1001,13 +1004,11 @@ export function showRegistrationModal() {
       return;
     }
 
-    // استدعاء الدالة الجديدة للتعامل مع التسجيل
     await handleRegistration(username, email, password);
     hideRegistrationModal();
   });
 }
 
-// ... (بقية الدوال)
 export function hideRegistrationModal() {
   if (registrationModal) {
     registrationModal.classList.remove('show');
@@ -1019,10 +1020,6 @@ export function hideRegistrationModal() {
     }, { once: true });
   }
 }
-
-// في ملف js/chat-ui.js
-// ... (الاستيرادات والدوال الموجودة)
-
 
 // دالة التحقق من تكرار اسم المستخدم
 async function isUsernameTaken(username) {
@@ -1036,43 +1033,66 @@ async function isUsernameTaken(username) {
   return false;
 }
 
-// ✨ الدالة الجديدة للتعامل مع التسجيل
+
 export async function handleRegistration(registerName, registerEmail, registerPassword) {
   const DEFAULT_USER_AVATAR = 'images/default-user.png';
-  const userRank = 'عضو';
+  const newRank = 'عضو';
 
   try {
     if (await isUsernameTaken(registerName)) {
-      alert('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.'); // يمكنك استبدالها بدالة عرض رسالة أفضل
+      alert('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.');
       return;
     }
 
+    // 1. جلب بيانات المستخدم الزائر الحالية
+    const visitorId = localStorage.getItem('chatUserId');
+    let visitorData = {};
+    if (visitorId) {
+      const visitorDocRef = doc(db, 'visitors', visitorId);
+      const visitorDocSnap = await getDoc(visitorDocRef);
+      if (visitorDocSnap.exists()) {
+        visitorData = visitorDocSnap.data();
+      }
+    }
+
+    // 2. إنشاء الحساب في Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
     const userId = userCredential.user.uid;
 
-    await setDoc(doc(db, 'users', userId), {
+    // 3. دمج بيانات الزائر مع الحساب الجديد
+    const userDataToSave = {
       username: registerName,
       email: registerEmail,
       timestamp: serverTimestamp(),
       userType: 'registered',
       avatar: DEFAULT_USER_AVATAR,
-      rank: userRank,
-      level: 1,
-      totalExp: 0,
-      currentExp: 0,
-      expToNextLevel: 200,
-      likes: []
-    });
+      rank: newRank,
+      level: visitorData.level || 1,
+      totalExp: visitorData.totalExp || 0,
+      currentExp: visitorData.currentExp || 0,
+      expToNextLevel: visitorData.expToNextLevel || 200,
+      likes: visitorData.likes || [],
+      age: visitorData.age || null,
+      gender: visitorData.gender || null
+    };
 
+    await setDoc(doc(db, 'users', userId), userDataToSave);
+
+    // 4. حذف بيانات الزائر من مجموعة visitors
+    if (visitorId) {
+      await deleteDoc(doc(db, 'visitors', visitorId));
+    }
+
+    // تحديث البيانات في الذاكرة المحلية
     localStorage.setItem('chatUserName', registerName);
     localStorage.setItem('userType', 'registered');
     localStorage.setItem('chatUserId', userId);
-    localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
-    localStorage.setItem('chatUserRank', userRank);
+    localStorage.setItem('chatUserAvatar', userDataToSave.avatar);
+    localStorage.setItem('chatUserRank', newRank);
 
-    // ✨ نقل المستخدم إلى صفحة الدردشة مباشرةً بعد التسجيل
+    // توجيه المستخدم
     localStorage.setItem('fromRegistrationPage', 'true');
-    window.location.href = 'chat.html'; // أو 'rooms.html' حسب ما تفضله
+    window.location.href = 'chat.html';
 
   } catch (error) {
     console.error("خطأ أثناء تسجيل الحساب:", error);

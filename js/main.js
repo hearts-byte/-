@@ -575,27 +575,60 @@ function showRoomsPasswordModal(roomId, roomName, roomPassword) {
     };
 }
 
-function renderMessages(docs, clear = false) {
+export function renderMessages(docs, clear = false) {
     const chatBox = document.querySelector('#chat-box .chat-box');
     if (!chatBox) return;
-    if (clear) chatBox.innerHTML = '';
+
+    // ✨ حفظ موضع التمرير الحالي قبل إضافة الرسائل الجديدة.
+    // ✨ هذا مهم عند تحميل رسائل قديمة لمنع القفز المفاجئ.
+    const isAtBottom = (chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 1);
+    const oldScrollHeight = chatBox.scrollHeight;
+
+    // ✨ إذا كان 'clear' صحيحاً، امسح كل الرسائل الموجودة.
+    if (clear) {
+        chatBox.innerHTML = '';
+    }
+
     docs.forEach(docSnap => {
         const msgData = { id: docSnap.id, ...docSnap.data() };
         const senderData = window.allUsersAndVisitorsData?.find(u => u.id === msgData.senderId);
+        
+        // ✨ هذا الشرط مهم: يجب التأكد من عدم إضافة الرسائل المكررة.
+        // ✨ إذا كانت الرسالة موجودة مسبقًا، لا تفعل شيئاً.
+        const existingElement = chatBox.querySelector(`[data-id="${msgData.id}"]`);
+        if (existingElement) {
+            return;
+        }
+
         if (!msgData.isSystemMessage) {
             msgData.userType = senderData?.rank === 'زائر' ? 'visitor' : 'registered';
             msgData.senderRank = senderData?.rank || 'زائر';
             msgData.level = senderData?.level || 1;
         }
+        
         const elem = msgData.isSystemMessage ?
             createSystemMessageElement(msgData.text) :
             createMessageElement(msgData);
+
         if (clear) {
+            // ✨ عند التحميل الأولي، أضف الرسائل في النهاية.
             chatBox.appendChild(elem);
         } else {
+            // ✨ عند تحميل رسائل أقدم، أضفها في البداية.
             chatBox.insertBefore(elem, chatBox.firstChild);
         }
     });
+
+    // ✨ بعد إضافة الرسائل الجديدة، اضبط موضع التمرير.
+    setTimeout(() => {
+        if (clear) {
+            // ✨ عند التحميل الأولي، مرر للأسفل.
+            chatBox.scrollTop = chatBox.scrollHeight;
+        } else if (!isAtBottom) {
+            // ✨ عند تحميل المزيد من الرسائل القديمة، حافظ على موضع التمرير.
+            chatBox.scrollTop = chatBox.scrollHeight - oldScrollHeight;
+        }
+    }, 0);
 }
 
 // في ملف main.js

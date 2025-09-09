@@ -126,14 +126,26 @@ export async function loadMoreMessages(renderMessages) {
 
 // في ملف chat-firestore.js
 // ... (الاستيرادات)
+
 let unsubscribeFromMessages = null;
 
 export function listenForNewMessages(roomId) {
-    if (unsubscribeFromMessages) unsubscribeFromMessages();
+    if (unsubscribeFromMessages) {
+        unsubscribeFromMessages();
+    }
     const chatBox = document.querySelector('#chat-box .chat-box');
     const messagesCol = collection(db, 'rooms', roomId, 'messages');
+    
+    // ✨ متغير لتجاهل اللقطة الأولية
+    let isFirstSnapshot = true;
 
     unsubscribeFromMessages = onSnapshot(query(messagesCol, orderBy('timestamp', 'asc')), snapshot => {
+        // ✨ إذا كانت هذه أول لقطة، تجاهلها فقط لتجنب تكرار الرسائل القديمة.
+        if (isFirstSnapshot) {
+            isFirstSnapshot = false;
+            return;
+        }
+
         snapshot.docChanges().forEach(change => {
             if (change.type === 'added') {
                 const messageData = { id: change.doc.id, ...change.doc.data() };
@@ -146,25 +158,18 @@ export function listenForNewMessages(roomId) {
                     messageData.level = senderData?.level || 1;
                 }
 
-                // --- إضافة منطق التنظيف الفوري ---
                 if (messageData.isSystemMessage && messageData.type === 'clear') {
-                    // امسح كل الرسائل من الواجهة
                     chatBox.innerHTML = '';
-                    // أضف فقط رسالة النظام الخاصة بالتنظيف
                     const elem = createSystemMessageElement(messageData.text);
                     chatBox.appendChild(elem);
-                    // لا تعرض بقية الرسائل
                     return;
                 }
-                // --- نهاية منطق التنظيف ---
 
                 const elem = messageData.isSystemMessage ?
                     createSystemMessageElement(messageData.text) :
                     createMessageElement(messageData);
                 chatBox.appendChild(elem);
-
             } else if (change.type === 'removed') {
-                // منطق حذف رسالة منفردة
                 const messageElement = chatBox.querySelector(`[data-id="${change.doc.id}"]`);
                 if (messageElement) {
                     messageElement.remove();
@@ -183,6 +188,7 @@ export function listenForNewMessages(roomId) {
 
     return unsubscribeFromMessages;
 }
+
 // ... (بقية الكود)
 
 
