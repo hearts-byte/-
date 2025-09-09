@@ -552,7 +552,7 @@ body {
   border: 2px solid white;
   background: #555;
   border-radius: 8px;
-  height: 100%;
+  height: 50px;
   position: relative;
 }
 
@@ -828,6 +828,10 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
 
 /* User Info Modal (when clicking on user avatar/name in chat) */
 /* الكود الذي أرسلته، تم تعديله ليعمل بشكل صحيح */
+/* @import for Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&family=Almarai:wght@400;700&display=swap');
+
+/* Base Styles (No Change) */
 .user-info-modal {
     position: fixed;
     top: 0;
@@ -856,121 +860,122 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
     padding: 15px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     text-align: center;
-    width: 220px;
+    width: 200px;
     max-width: 250px;
     max-height: 350px;
     overflow-y: auto;
     color: #333;
     position: relative;
+    font-family: 'Almarai', sans-serif;
+    z-index: 2; /* Increased z-index for the entire content */
 }
 
+/* Header with Overlay for better text readability */
 .user-info-modal .user-profile-header {
-    width: 100%; /* ✨ الآن يملأ عرض النافذة بالكامل */
-    height: 210px;
-    position: absolute; /* ✨ تموضع مطلق */
-    top: 0; /* ✨ يبدأ من أعلى النافذة */
+    width: 100%;
+    height: 230px;
+    position: absolute;
+    top: 0;
     left: 0;
     overflow: hidden;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
-    z-index: 1; /* ✨ z-index منخفض ليكون في الخلف */
+    z-index: 1; /* z-index is lower than the modal content */
 }
 
-/* الأنماط الأخرى لم تتغير */
+/* Overlay to darken background image and improve text contrast */
+.user-info-modal .user-profile-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4); /* Dark overlay */
+    z-index: 2;
+}
+
 .user-info-modal .profile-header-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-/* الأنماط الأخرى كما هي */
-
+/* Close button - now with a better color for contrast */
 .user-info-modal .close-button {
     position: absolute;
     top: 15px;
-    /* ✨ تم تعديل هذا السطر */
     right: auto; 
-    /* ✨ تم إضافة هذا السطر */
     left: 15px; 
     font-size: 2em;
-    color: #fff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    color: #fff; /* White color */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Stronger shadow for readability */
     cursor: pointer;
     transition: color 0.2s ease, transform 0.2s ease;
-    z-index: 3;
+    z-index: 4; /* Higher z-index to be on top of overlay */
 }
-
-/* الأنماط الأخرى كما هي */
-
 
 .user-info-modal .close-button:hover {
     color: #eee;
     transform: rotate(90deg);
 }
 
-/* الأنماط الأخرى كما هي */
-
-/* الأنماط الأخرى كما هي */
-
+/* User avatar */
 .user-info-modal .user-avatar-large {
     width: 70px;
     height: 70px;
-    /* ✨ اجعل نصف القطر 50% لتحويلها إلى دائرة */
     border-radius: 50%; 
     object-fit: cover;
     margin-bottom: 10px;
     border: 3px solid #fff;
-    z-index: 2;
+    z-index: 3; /* Higher z-index to be on top of avatar */
     position: relative;
     margin-top: 15px;
 }
 
-/* الأنماط الأخرى كما هي */
-
-
-/* الأنماط الأخرى لم تتغير */
-
-/* ✨ هذا هو الكود الجديد الذي يجب إضافته أو تعديله */
-.user-info-modal .user-age-gender-info {
-    font-size: 0.8em; /* لجعل الخط أصغر قليلاً */
-    color: #fff; /* لون رمادي فاتح */
-    margin-top: 5px; /* مسافة صغيرة من العنصر الذي فوقه */
-    margin-bottom: 0px; /* مسافة صغيرة من العنصر الذي تحته */
-    z-index: 2; /* تأكد من أن العنصر في طبقة أعلى */
-    position: relative; /* ليتأثر بالـ z-index */
-    transform: translateY(-30px); 
-}
-
-/* قم بتعديل هذا الكود لرفع أيقونة الرتبة */
-.user-info-modal .user-rank-info {
-    z-index: 2;
-    position: relative;
-    /* يمكنك إزالة transform: translateY إذا كان يسبب مشاكل في التخطيط */
-     transform: translateY(-20px); 
-}
-
-
-
+/* User name - improved font and shadow */
 .user-info-modal .user-name-display {
-    font-weight: bold;
+    font-family: 'Tajawal', sans-serif; /* A more elegant font */
+    font-weight: 700;
     font-size: 1.2em;
     color: #fff;
     margin-bottom: 20px;
-    text-shadow: none;
-    z-index: 2;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Added shadow for better contrast */
+    z-index: 3;
     position: relative;
+    transform: translateY(0px);
 }
 
-/* الأنماط الأخرى كما هي */
+/* Age and Gender info - improved font and shadow */
+.user-info-modal .user-age-gender-info {
+    font-family: 'Almarai', sans-serif;
+    font-size: 0.8em; 
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); /* Added shadow for contrast */
+    margin-top: 5px; 
+    margin-bottom: 0px; 
+    z-index: 3; 
+    position: relative; 
+    transform: translateY(-30px); 
+}
 
+/* Rank info - adjusted position */
+.user-info-modal .user-rank-info {
+    z-index: 3;
+    position: relative;
+    transform: translateY(-20px); 
+}
 
+/* Buttons */
 .user-info-modal .modal-buttons {
     display: flex;
     flex-direction: column;
     gap: 10px;
     border-top: 1px solid #eee;
-    padding-top: -20px;
-    margin-top: -20px;
+    padding-top: 5px; /* Adjusted padding-top */
+    margin-top: 5px; /* Adjusted margin-top */
+    z-index: 3; /* Increased z-index for buttons */
+    position: relative;
 }
 
 .user-info-modal .modal-button {
@@ -982,6 +987,7 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
     font-weight: bold;
     transition: background-color 0.2s ease, transform 0.1s ease;
     width: 100%;
+    font-family: 'Almarai', sans-serif;
 }
 
 .user-info-modal .modal-button:hover {
@@ -1784,6 +1790,7 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
 }
 
 /* قسم الرأس (الصورة، الرتبة، الاسم) - تم تصغيره */
+/* قسم الرأس (الصورة، الرتبة، الاسم) */
 .profile-header {
     display: flex;
     align-items: center;
@@ -1793,6 +1800,7 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
     margin-bottom: 15px;
     border-bottom: 1px solid #eee;
     gap: 8px; /* **تمت الإضافة: مسافة 8 بكسل بين عناصر Flexbox (الصورة وكتلة المعلومات)** */
+    flex-direction: row-reverse; /* **تم التعديل: لعكس الترتيب وجعل الصورة على اليمين** */
 }
 
 /* تنسيقات صورة البروفايل داخل الشريط - تم تصغيرها */
@@ -1802,46 +1810,53 @@ max-width: 300px; /* **القيمة الجديدة للحد الأقصى للع�
     border-radius: 8px;
     object-fit: cover;
     display: block;
-    /* margin-right: 5px; **تمت إزالة هذا السطر أو يمكنك تعيينه إلى 0** */
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* حاوية لمعلومات البروفايل (الرتبة والاسم) -/* حاوية لمعلومات البروفايل (الرتبة والاسم) */
+/* حاوية لمعلومات البروفايل (الرتبة والاسم) */
 .profile-info {
+    flex-grow: 1; /* تم التعديل: ليأخذ كل المساحة المتاحة */
     display: flex;
     flex-direction: column;
-    align-items: flex-end; /* لمحاذاة الرتبة والاسم لليمين داخل كتلتهم */
-    /* flex-grow: 1; **تمت إزالة هذا السطر** */
+    align-items: flex-start; /* **تم التعديل: لمحاذاة الرتبة والاسم لليسار** */
 }
 
-/* تنسيقات عنصر الرتبة - تم تصغيرها */
+/* تنسيقات عنصر الرتبة */
 .profile-rank-display {
-display: flex;
-align-items: center;
-justify-content: flex-end;
-font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start; /* **تم التعديل: لمحاذاة النص لليسار** */
+    font-size: 0.8em;
     background-color: rgba(255, 255, 255, 0.2); /* خلفية بيضاء شفافة */
     color: white; /* لون النص يصبح أبيض */
     border-radius: 5px; /* حواف دائرية للرتبة */
     padding: 2px 8px; /* مسافة داخلية مناسبة */
-margin-bottom: 3px;
-flex-direction: row-reverse;
-}
-.profile-rank-display .rank-icon {
-width: 16px;
-height: 16px;
-margin-left: 4px;  margin-left 
-margin-right: 0;
-vertical-align: middle;
+    margin-bottom: 3px;
+    flex-direction: row; /* **تم التعديل: لإعادة الترتيب الطبيعي للأيقونة والنص** */
+    white-space: nowrap; /* تم الإضافة: يمنع النص من النزول لسطر جديد */
+    overflow: hidden; /* تم الإضافة: لإخفاء النص الزائد */
+    text-overflow: ellipsis; /* تم الإضافة: لإظهار نقاط (...) */
 }
 
-/* تنسيقات اسم المستخدم - تم تصغيرها */
+.profile-rank-display .rank-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px; /* **تم التعديل: لنقل الهامش إلى اليمين** */
+    margin-left: 0;
+    vertical-align: middle;
+}
+
+/* تنسيقات اسم المستخدم */
 #modal-username-display {
     font-size: 1.1em;
     color: white;
     margin: 0; /* تأكد من عدم وجود هوامش إضافية */
     font-weight: bold;
-    text-align: right; /* **للتأكيد على المحاذاة لليمين** */
+    text-align: left; /* **تم التعديل: للتأكيد على المحاذاة لليسار** */
+    white-space: nowrap; /* تم الإضافة: يمنع النص من النزول لسطر جديد */
+    overflow: hidden; /* تم الإضافة: لإخفاء النص الزائد */
+    text-overflow: ellipsis; /* تم الإضافة: لإظهار نقاط (...) */
+    flex-grow: 1; /* تم الإضافة: ليأخذ كل المساحة المتاحة */
 }
 
 /* قسم الأزرار */
