@@ -188,42 +188,43 @@ registerForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  try {
-    if (await isUsernameTaken(registerName)) {
-      showMessage('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.', 'error');
-      return;
-    }
-    // إنشاء الحساب في Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
-    const userId = userCredential.user.uid;
+  // داخل registerForm.addEventListener('submit', ...)
+try {
+  if (await isUsernameTaken(registerName)) {
+    showMessage('اسم المستخدم مستخدم سابقاً. الرجاء اختيار اسم فريد.', 'error');
+    return;
+  }
+  // إنشاء معرف عشوائي للمستخدم
+  const userId = crypto.randomUUID();
 
-    // حفظ بيانات المستخدم في Firestore
-    await setDoc(doc(db, 'users', userId), {
-      username: registerName,
-      email: registerEmail,
-      age: registerAge,
-      gender: registerGender,
-      timestamp: serverTimestamp(),
-      userType: 'registered',
-      avatar: DEFAULT_USER_AVATAR,
-      rank: userRank,
-      level: 1,
-      totalExp: 0,
-      currentExp: 0,
-      expToNextLevel: 200,
-      likes: []
-    });
+  // حفظ بيانات المستخدم في Firestore بما فيها كلمة المرور
+  await setDoc(doc(db, 'users', userId), {
+    username: registerName,
+    email: registerEmail,
+    password: registerPassword, // ⚠️ غير آمن، يفضل التشفير
+    age: registerAge,
+    gender: registerGender,
+    timestamp: serverTimestamp(),
+    userType: 'registered',
+    avatar: DEFAULT_USER_AVATAR,
+    rank: userRank,
+    level: 1,
+    totalExp: 0,
+    currentExp: 0,
+    expToNextLevel: 200,
+    likes: []
+  });
 
-    localStorage.setItem('chatUserName', registerName);
-    localStorage.setItem('userType', 'registered');
-    localStorage.setItem('chatUserId', userId);
-    localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
-    localStorage.setItem('chatUserRank', userRank);
+  localStorage.setItem('chatUserName', registerName);
+  localStorage.setItem('userType', 'registered');
+  localStorage.setItem('chatUserId', userId);
+  localStorage.setItem('chatUserAvatar', DEFAULT_USER_AVATAR);
+  localStorage.setItem('chatUserRank', userRank);
 
-    localStorage.setItem('fromRegistrationPage', 'true');
-    window.location.href = 'rooms.html';
+  localStorage.setItem('fromRegistrationPage', 'true');
+  window.location.href = 'rooms.html';
 
-  } catch (error) {
+} catch (error) {
     console.error("خطأ أثناء تسجيل الحساب:", error);
     if (error.code === 'auth/weak-password') {
       showMessage('كلمة المرور ضعيفة. يجب أن تحتوي على 6 أحرف على الأقل.', 'error');
@@ -235,76 +236,58 @@ registerForm.addEventListener('submit', async (event) => {
 
   // ================= دخول الأعضاء ==================
   memberForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const memberInput = document.getElementById('memberName').value.trim();
-    const memberPassword = document.getElementById('memberPassword').value;
+  event.preventDefault();
+  const memberInput = document.getElementById('memberName').value.trim();
+  const memberPassword = document.getElementById('memberPassword').value;
 
-    if (memberInput === '' || memberPassword === '') {
-      showMessage('يرجى إدخال اسم المستخدم أو البريد الإلكتروني بالإضافة إلى كلمة المرور.', 'error');
+  if (memberInput === '' || memberPassword === '') {
+    showMessage('يرجى إدخال اسم المستخدم أو البريد الإلكتروني بالإضافة إلى كلمة المرور.', 'error');
+    return;
+  }
+
+  try {
+    // البحث عن المستخدم بالاسم أو البريد الإلكتروني
+    let userQuery;
+    if (memberInput.includes('@')) {
+      userQuery = query(collection(db, 'users'), where('email', '==', memberInput), limit(1));
+    } else {
+      userQuery = query(collection(db, 'users'), where('username', '==', memberInput), limit(1));
+    }
+    const userSnapshot = await getDocs(userQuery);
+
+    if (userSnapshot.empty) {
+      showMessage('لم يتم العثور على أي حساب بهذا الاسم أو البريد.', 'error');
       return;
     }
 
-    let emailToUse = '';
+    const userDoc = userSnapshot.docs[0];
+    const userData = userDoc.data();
 
-    if (memberInput.includes('@')) {
-      emailToUse = memberInput;
-    } else {
-      try {
-        const usersQuery = query(
-          collection(db, 'users'),
-          where('username', '==', memberInput),
-          limit(1)
-        );
-        const userSnapshot = await getDocs(usersQuery);
-        if (!userSnapshot.empty) {
-          const userData = userSnapshot.docs[0].data();
-          emailToUse = userData.email;
-        } else {
-          showMessage('لم يتم العثور على أي حساب بهذا الاسم. تأكد من كتابته بشكل صحيح أو استخدم بريدك الإلكتروني للدخول.', 'error');
-          return;
-        }
-      } catch (error) {
-        console.error("خطأ أثناء البحث عن اسم المستخدم:", error);
-        showMessage('تعذر التحقق من اسم المستخدم. يرجى المحاولة مرة أخرى بعد قليل.', 'error');
-        return;
-      }
+    // تحقق من كلمة المرور المدخلة (بدون تشفير – غير آمن للإنتاج)
+    if (userData.password !== memberPassword) {
+      showMessage('كلمة المرور غير صحيحة. يرجى إعادة المحاولة.', 'error');
+      return;
     }
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, memberPassword);
-      const userId = userCredential.user.uid;
+    // تسجيل دخول المستخدم
+    const userId = userDoc.id;
+    const userAvatar = userData.avatar || DEFAULT_USER_AVATAR;
+    const userRank = userData.rank || 'عضو';
 
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (!userDoc.exists()) {
-        showMessage('بيانات الحساب غير متوفرة حالياً. يرجى التواصل مع الدعم الفني.', 'error');
-        return;
-      }
-      const userData = userDoc.data();
-      const userAvatar = userData.avatar || DEFAULT_USER_AVATAR;
-      const userRank = userData.rank || 'عضو';
+    localStorage.setItem('chatUserName', userData.username);
+    localStorage.setItem('userType', 'registered');
+    localStorage.setItem('chatUserId', userId);
+    localStorage.setItem('chatUserAvatar', userAvatar);
+    localStorage.setItem('chatUserRank', userRank);
 
-      localStorage.setItem('chatUserName', userData.username);
-      localStorage.setItem('userType', 'registered');
-      localStorage.setItem('chatUserId', userId);
-      localStorage.setItem('chatUserAvatar', userAvatar);
-      localStorage.setItem('chatUserRank', userRank);
+    localStorage.setItem('fromRegistrationPage', 'true');
+    window.location.href = 'chat.html';
 
-      localStorage.setItem('fromRegistrationPage', 'true');
-      window.location.href = 'chat.html';
-
-    } catch (error) {
-      console.error("خطأ في تسجيل الدخول:", error);
-      if (error.code === 'auth/user-not-found') {
-        showMessage('لا يوجد حساب مرتبط بالبريد الإلكتروني المدخل. تأكد من صحة بياناتك أو قم بإنشاء حساب جديد.', 'error');
-      } else if (error.code === 'auth/wrong-password') {
-        showMessage('كلمة المرور غير صحيحة. يرجى إعادة المحاولة أو استخدام خيار استعادة كلمة المرور.', 'error');
-      } else if (error.code === 'auth/invalid-email') {
-        showMessage('صيغة البريد الإلكتروني غير صحيحة. يرجى التأكد من كتابته بشكل صحيح.', 'error');
-      } else {
-        showMessage('حدث خطأ غير متوقع أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.', 'error');
-      }
-    }
-  });
+  } catch (error) {
+    console.error("خطأ أثناء تسجيل الدخول:", error);
+    showMessage('حدث خطأ غير متوقع أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.', 'error');
+  }
+});
 
   const contactButton = document.querySelector('.contact-button');
   if (contactButton) {

@@ -919,7 +919,6 @@ export function addRegistrationButtonToBottomBar(userRank) {
     }
 }
 
-
 export const registerModalHTML = `
 <div class="registration-modal-content">
   <span class="close-button">&times;</span>
@@ -946,15 +945,11 @@ export const registerModalHTML = `
 
 let registrationModal = null;
 
-
 // ✨ دالة جديدة لتوليد أربعة أرقام عشوائية
 function generateRandomFourDigits() {
-  // Math.random() يولد رقم عشري بين 0 (شامل) و 1 (غير شامل)
-  // نضربه في 9000 ثم نضيف 1000 لضمان أن يكون الرقم بين 1000 و 9999
   const randomNumber = Math.floor(Math.random() * 9000) + 1000;
   return randomNumber;
 }
-
 
 export function showRegistrationModal() {
   if (registrationModal) {
@@ -1033,7 +1028,7 @@ async function isUsernameTaken(username) {
   return false;
 }
 
-
+// نسخة محدثة لحفظ كلمة المرور في قاعدة البيانات مباشرة (بدون Firebase Auth)
 export async function handleRegistration(registerName, registerEmail, registerPassword) {
   const DEFAULT_USER_AVATAR = 'images/default-user.png';
   const newRank = 'عضو';
@@ -1044,7 +1039,7 @@ export async function handleRegistration(registerName, registerEmail, registerPa
       return;
     }
 
-    // 1. جلب بيانات المستخدم الزائر الحالية
+    // جلب بيانات المستخدم الزائر الحالية
     const visitorId = localStorage.getItem('chatUserId');
     let visitorData = {};
     if (visitorId) {
@@ -1055,14 +1050,14 @@ export async function handleRegistration(registerName, registerEmail, registerPa
       }
     }
 
-    // 2. إنشاء الحساب في Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
-    const userId = userCredential.user.uid;
+    // إنشاء معرف عشوائي للمستخدم الجديد
+    const userId = crypto.randomUUID();
 
-    // 3. دمج بيانات الزائر مع الحساب الجديد
+    // دمج بيانات الزائر مع الحساب الجديد، مع حفظ كلمة المرور
     const userDataToSave = {
       username: registerName,
       email: registerEmail,
+      password: registerPassword, // ⚠️ يتم الحفظ بشكل صريح هنا
       timestamp: serverTimestamp(),
       userType: 'registered',
       avatar: DEFAULT_USER_AVATAR,
@@ -1078,7 +1073,7 @@ export async function handleRegistration(registerName, registerEmail, registerPa
 
     await setDoc(doc(db, 'users', userId), userDataToSave);
 
-    // 4. حذف بيانات الزائر من مجموعة visitors
+    // حذف بيانات الزائر من مجموعة visitors
     if (visitorId) {
       await deleteDoc(doc(db, 'visitors', visitorId));
     }
@@ -1096,14 +1091,6 @@ export async function handleRegistration(registerName, registerEmail, registerPa
 
   } catch (error) {
     console.error("خطأ أثناء تسجيل الحساب:", error);
-    if (error.code === 'auth/email-already-in-use') {
-      alert('هذا البريد الإلكتروني مرتبط بحساب آخر بالفعل.');
-    } else if (error.code === 'auth/weak-password') {
-      alert('كلمة المرور ضعيفة. يجب أن تحتوي على 6 أحرف على الأقل.');
-    } else if (error.code === 'auth/invalid-email') {
-      alert('صيغة البريد الإلكتروني غير صحيحة.');
-    } else {
-      alert('حدث خطأ غير متوقع أثناء التسجيل. يرجى إعادة المحاولة.');
-    }
+    alert('حدث خطأ غير متوقع أثناء التسجيل. يرجى إعادة المحاولة.');
   }
 }

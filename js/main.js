@@ -799,14 +799,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const profileButton = document.getElementById('profileButton');
                 if (profileButton) topButtonsContainer.insertBefore(reportBtnDiv, profileButton.nextSibling);
             }
-            if (RANK_PERMISSIONS[currentUserRank]?.canSeePrivateChatButton) {
-                const privateBtnDiv = document.createElement('div');
-                privateBtnDiv.classList.add('btn', 'private');
-                privateBtnDiv.id = 'privateButton';
-                privateBtnDiv.innerHTML = `<i class="fas fa-envelope"></i><br>خاص`;
-                const friendButton = topButtonsContainer.querySelector('.btn.friend');
-                if (friendButton) topButtonsContainer.insertBefore(privateBtnDiv, friendButton.nextSibling);
-            }
         }
         await loadComponent("chat-box", "components/chat-box.html");
         await loadComponent("input-bar", "components/input-bar.html");
@@ -1046,12 +1038,12 @@ profileButton = document.getElementById('profileButton');
                 const currentUserData = allUsersAndVisitors.find(user => user.id === currentUserId);
                 if (currentUserData) {
                     const currentUserRank = currentUserData.rank;
-                    const privateBtn = document.querySelector('.top-bar .btn.private');
+                    const privateBtn = document.getElementById('privateButton');
+if (privateBtn) {
+    const canSeePrivateChat = RANK_PERMISSIONS[currentUserRank]?.canSeePrivateChatButton;
+    privateBtn.style.display = canSeePrivateChat ? 'flex' : 'none';
+}
                     const reportBtn = document.querySelector('.top-bar .btn.report');
-                    if (privateBtn) {
-                        const canSeePrivateChat = RANK_PERMISSIONS[currentUserRank]?.canSeePrivateChatButton;
-                        privateBtn.style.display = canSeePrivateChat === false ? 'none' : 'flex';
-                    }
                     if (reportBtn) {
                         const canSeeReport = RANK_PERMISSIONS[currentUserRank]?.canSeeReportButton;
                         reportBtn.style.visibility = canSeeReport === false ? 'hidden' : 'visible';

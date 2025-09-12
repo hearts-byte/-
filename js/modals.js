@@ -370,7 +370,9 @@ window.updateEditProfileModalContent = async function(user) {
 
 document.addEventListener('DOMContentLoaded', createEditProfileModalHTML);
 
-// ---- مودال تغيير كلمة المرور الآمن مع Firebase Auth ----
+// ---- مودال تغيير كلمة المرور الآمن مع Firestore ----
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
 export const showChangePasswordModal = () => {
     let changePasswordModal = document.getElementById('changePasswordModal');
     if (!changePasswordModal) {
@@ -419,7 +421,7 @@ export const showChangePasswordModal = () => {
             if (e.target === changePasswordModal) hideModal();
         });
 
-        // معالجة إرسال النموذج
+        // معالجة إرسال النموذج (Firestore فقط)
         const changePasswordForm = document.getElementById('changePasswordForm');
         const alertDiv = document.getElementById('changePasswordAlert');
         changePasswordForm.addEventListener('submit', async (e) => {
@@ -440,27 +442,45 @@ export const showChangePasswordModal = () => {
                 return;
             }
 
-            const user = auth.currentUser;
-            if (!user || !user.email) {
-                alertDiv.textContent = "يجب أن تسجل دخول بالبريد الإلكتروني لتغيير كلمة المرور.";
+            // جلب بيانات المستخدم الحالي من Firestore
+            const currentUserId = localStorage.getItem('chatUserId');
+            if (!currentUserId) {
+                alertDiv.textContent = "يجب أن تسجل دخول أولاً.";
                 alertDiv.style.color = "red";
                 return;
             }
-            const cred = EmailAuthProvider.credential(user.email, currentPassword);
+
+            // جلب الوثيقة: هل هو زائر أم مستخدم؟
+            let userDocRef = doc(db, 'users', currentUserId);
+            let userType = localStorage.getItem('userType');
+            if (userType === 'visitor') {
+                userDocRef = doc(db, 'visitors', currentUserId);
+            }
 
             try {
-                await reauthenticateWithCredential(user, cred);
-                await updatePassword(user, newPassword);
+                const userDocSnap = await getDoc(userDocRef);
+                if (!userDocSnap.exists()) {
+                    alertDiv.textContent = "تعذر جلب بيانات الحساب.";
+                    alertDiv.style.color = "red";
+                    return;
+                }
+                const userData = userDocSnap.data();
+                const oldPassword = userData.password || '';
+                if (currentPassword !== oldPassword) {
+                    alertDiv.textContent = "كلمة المرور الحالية غير صحيحة.";
+                    alertDiv.style.color = "red";
+                    return;
+                }
+
+                // تحديث كلمة المرور في الداتا
+                await updateDoc(userDocRef, { password: newPassword });
                 alertDiv.textContent = "تم تغيير كلمة المرور بنجاح!";
                 alertDiv.style.color = "green";
                 setTimeout(() => hideModal(), 1500);
+
             } catch (error) {
-                let msg = "حدث خطأ!";
-                if (error.code === "auth/wrong-password") msg = "كلمة المرور الحالية غير صحيحة.";
-                else if (error.code === "auth/weak-password") msg = "كلمة المرور ضعيفة جداً.";
-                else if (error.code === "auth/too-many-requests") msg = "محاولات كثيرة! انتظر قليلاً.";
-                else if (error.message) msg = error.message;
-                alertDiv.textContent = msg;
+                console.error("خطأ أثناء تغيير كلمة المرور:", error);
+                alertDiv.textContent = "حدث خطأ أثناء تغيير كلمة المرور. حاول مرة أخرى.";
                 alertDiv.style.color = "red";
             }
         });
@@ -470,7 +490,7 @@ export const showChangePasswordModal = () => {
     document.getElementById('newPassword').value = '';
     document.getElementById('confirmNewPassword').value = '';
     document.getElementById('changePasswordAlert').textContent = '';
-    // إظهار المودال (سيعمل مع CSS الذي وضعته)
+    // إظهار المودال
     changePasswordModal.classList.add('show');
 };
 
@@ -1356,82 +1376,173 @@ function showAdminEditUserModal(userData) {
     }
 
     // أزرار الإدارة: تحديث البيانات مباشرة
+    // زر تغيير الحالة
     const changeStatusBtn = document.getElementById('admin-change-status-btn');
     if (changeStatusBtn) {
-        changeStatusBtn.onclick = async function() {
-            const newStatus = prompt('أدخل الحالة الجديدة:', userData.statusText || '');
-            if (newStatus !== null) {
-                await updateUserData(userData.id, { statusText: newStatus });
-                userData.statusText = newStatus;
-                const statusElem = document.querySelector('#adminEditUserModal .user-status-display');
-                if (statusElem) statusElem.textContent = newStatus;
-                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
-                if (idx !== -1) window.allUsersAndVisitorsData[idx].statusText = newStatus;
-            }
-        };
-    }
-
-    const changeNameBtn = document.getElementById('admin-change-name-btn');
+changeStatusBtn.onclick = function() {
+    showAdminInputModal({
+        title: "تغيير الحالة",
+        label: "أدخل الحالة الجديدة:",
+        value: userData.statusText || "",
+        type: "text",
+        maxLength: 80,
+        onSave: async (newStatus) => {
+            await updateUserData(userData.id, { statusText: newStatus });
+            userData.statusText = newStatus;
+            const statusElem = document.querySelector('#adminEditUserModal .user-status-display');
+            if (statusElem) statusElem.textContent = newStatus;
+            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+            if (idx !== -1) window.allUsersAndVisitorsData[idx].statusText = newStatus;
+        }
+    });
+};
+}
+// زر تغيير الاسم
+const changeNameBtn = document.getElementById('admin-change-name-btn');
     if (changeNameBtn) {
-        changeNameBtn.onclick = async function() {
-            const newName = prompt('أدخل الاسم الجديد:', userData.name || '');
-            if (newName !== null && newName.trim()) {
-                await updateUserData(userData.id, { username: newName });
-                userData.username = newName;
-                const nameElem = document.querySelector('#adminEditUserModal .user-name-display');
-                if (nameElem) nameElem.textContent = newName;
-                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
-                if (idx !== -1) window.allUsersAndVisitorsData[idx].username = newName;
-            }
-        };
-    }
-
-    const changePasswordBtn = document.getElementById('admin-change-password-btn');
+changeNameBtn.onclick = function() {
+    showAdminInputModal({
+        title: "تغيير الاسم",
+        label: "أدخل الاسم الجديد:",
+        value: userData.name || "",
+        type: "text",
+        maxLength: 32,
+        onSave: async (newName) => {
+            await updateUserData(userData.id, { username: newName });
+            userData.username = newName;
+            const nameElem = document.querySelector('#adminEditUserModal .user-name-display');
+            if (nameElem) nameElem.textContent = newName;
+            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+            if (idx !== -1) window.allUsersAndVisitorsData[idx].username = newName;
+        }
+    });
+};
+}
+// زر تغيير كلمة المرور
+const changePasswordBtn = document.getElementById('admin-change-password-btn');
     if (changePasswordBtn) {
-        changePasswordBtn.onclick = async function() {
-            const newPass = prompt('أدخل كلمة المرور الجديدة:');
-            if (newPass !== null && newPass.trim()) {
-                await updateUserData(userData.id, { password: newPass });
-                alert('تم تغيير كلمة المرور بنجاح.');
-            }
-        };
-    }
-
-    const changeEmailBtn = document.getElementById('admin-change-email-btn');
+changePasswordBtn.onclick = function() {
+    showAdminInputModal({
+        title: "تغيير كلمة المرور",
+        label: "أدخل كلمة المرور الجديدة:",
+        value: "",
+        type: "password",
+        maxLength: 64,
+        onSave: async (newPass) => {
+            await updateUserData(userData.id, { password: newPass });
+            alert('تم تغيير كلمة المرور بنجاح.');
+        }
+    });
+};
+}
+// زر تغيير البريد الإلكتروني
+const changeEmailBtn = document.getElementById('admin-change-email-btn');
     if (changeEmailBtn) {
-        changeEmailBtn.onclick = async function() {
-            const newEmail = prompt('أدخل البريد الإلكتروني الجديد:', userData.email || '');
-            if (newEmail !== null && newEmail.trim()) {
-                await updateUserData(userData.id, { email: newEmail });
-                userData.email = newEmail;
-                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
-                if (idx !== -1) window.allUsersAndVisitorsData[idx].email = newEmail;
-            }
-        };
+changeEmailBtn.onclick = function() {
+    showAdminInputModal({
+        title: "تغيير البريد الإلكتروني",
+        label: "أدخل البريد الإلكتروني الجديد:",
+        value: userData.email || "",
+        type: "email",
+        maxLength: 100,
+        onSave: async (newEmail) => {
+            await updateUserData(userData.id, { email: newEmail });
+            userData.email = newEmail;
+            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+            if (idx !== -1) window.allUsersAndVisitorsData[idx].email = newEmail;
+        }
+    });
+};
+}
+// زر تغيير الرتبة
+const changeRankBtn = document.getElementById('admin-change-rank-btn');
+    if (changeRankBtn) {
+changeRankBtn.onclick = function() {
+    const ranks = [
+        "اونر اداري", "اونر", "سوبر اداري", "مشرف", "سوبر ادمن", "ادمن",
+        "بريميوم", "بلاتينيوم", "ملكي", "ذهبي", "برونزي", "عضو"
+    ];
+    showAdminInputModal({
+        title: "تغيير الرتبة",
+        label: "اختر الرتبة الجديدة:",
+        value: userData.rank || "",
+        options: ranks,
+        onSave: async (selectedRank) => {
+            await updateUserData(userData.id, { rank: selectedRank });
+            userData.rank = selectedRank;
+            const rankImg = document.querySelector('#adminEditUserModal .rank-image');
+            if (rankImg) rankImg.src = window.RANK_IMAGE_MAP && window.RANK_IMAGE_MAP[selectedRank] ? window.RANK_IMAGE_MAP[selectedRank] : 'images/default-rank.png';
+            const rankTxt = document.querySelector('#adminEditUserModal .user-rank');
+            if (rankTxt) rankTxt.textContent = selectedRank;
+            const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
+            if (idx !== -1) window.allUsersAndVisitorsData[idx].rank = selectedRank;
+        }
+    });
+};
+}
+}
+function showAdminInputModal({
+    title = "إدخال جديد",
+    label = "",
+    value = "",
+    type = "text",
+    onSave = () => {},
+    placeholder = "",
+    maxLength = 100,
+    options = null // إذا كانت الرتبة، حط مصفوفة رتب هنا
+}) {
+    let modal = document.getElementById('adminInputMiniModal');
+    if (modal) modal.remove();
+
+    let inputFieldHtml = "";
+    if (Array.isArray(options)) {
+        inputFieldHtml = `
+            <select id="adminMiniInputField" style="width:96%;padding:8px;border-radius:5px;border:1px solid #aaa;margin-bottom:15px;">
+                ${options.map(opt => `<option value="${opt}" ${opt === value ? "selected" : ""}>${opt}</option>`).join('')}
+            </select>
+        `;
+    } else {
+        inputFieldHtml = `
+            <input id="adminMiniInputField" type="${type}" value="${value}" 
+                placeholder="${placeholder}" maxlength="${maxLength}" 
+                style="width:96%;padding:8px;border-radius:5px;border:1px solid #aaa;margin-bottom:15px;"/>
+        `;
     }
 
-    const changeRankBtn = document.getElementById('admin-change-rank-btn');
-    if (changeRankBtn) {
-        changeRankBtn.onclick = async function() {
-            const ranks = [
-                "المالك", "اونر اداري", "اونر", "سوبر اداري", "مشرف", "سوبر ادمن", "ادمن",
-                "بريميوم", "بلاتينيوم", "ملكي", "ذهبي", "برونزي", "عضو", "زائر"
-            ];
-            const newRank = prompt(
-                "اختر رقم الرتبة الجديدة:\n" + ranks.map((r, i) => `${i + 1}- ${r}`).join('\n')
-            );
-            const idxRank = parseInt(newRank) - 1;
-            if (idxRank >= 0 && idxRank < ranks.length) {
-                const selectedRank = ranks[idxRank];
-                await updateUserData(userData.id, { rank: selectedRank });
-                userData.rank = selectedRank;
-                const rankImg = document.querySelector('#adminEditUserModal .rank-image');
-                if (rankImg) rankImg.src = window.RANK_IMAGE_MAP && window.RANK_IMAGE_MAP[selectedRank] ? window.RANK_IMAGE_MAP[selectedRank] : 'images/default-rank.png';
-                const rankTxt = document.querySelector('#adminEditUserModal .user-rank');
-                if (rankTxt) rankTxt.textContent = selectedRank;
-                const idx = window.allUsersAndVisitorsData.findIndex(u => u.id === userData.id);
-                if (idx !== -1) window.allUsersAndVisitorsData[idx].rank = selectedRank;
-            }
-        };
-    }
+    const modalHTML = `
+        <div id="adminInputMiniModal" class="modal-overlay show" style="z-index:2002;">
+            <div class="modal-strip" style="max-width:580px;width:96%;">
+                <div class="modal-header">
+                    <h3>${title}</h3>
+                    <button class="close-btn" id="closeAdminInputMiniModal">&times;</button>
+                </div>
+                <div class="modal-content-area">
+                    <label style="margin-bottom:8px;display:block;">${label}</label>
+                    ${inputFieldHtml}
+                    <div style="text-align:left;">
+                        <button id="adminMiniSaveBtn" style="background:#6a1b9a;color:#fff;padding:7px 18px;border:none;border-radius:6px;cursor:pointer;">حفظ</button>
+                    </div>
+                    <div id="adminMiniModalMsg" style="margin-top:10px;font-size:14px;color:red;"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    document.getElementById('closeAdminInputMiniModal').onclick = () => {
+        document.getElementById('adminInputMiniModal').remove();
+    };
+
+    document.getElementById('adminMiniSaveBtn').onclick = async () => {
+        const inputValue = Array.isArray(options) 
+            ? document.getElementById('adminMiniInputField').value
+            : document.getElementById('adminMiniInputField').value.trim();
+
+        if (!inputValue) {
+            document.getElementById('adminMiniModalMsg').textContent = "الرجاء إدخال قيمة.";
+            return;
+        }
+        await onSave(inputValue);
+        document.getElementById('adminInputMiniModal').remove();
+    };
 }
