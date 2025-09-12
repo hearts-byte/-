@@ -654,3 +654,52 @@
 .badge.show {
   display: block;
 }
+
+/* Admin Actions Container */
+.admin-actions-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* تم تقليل المسافة هنا */
+    background-color: #fff;
+    border-top: 1px solid #333;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Admin Action Button */
+.admin-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    width: 100%;
+    padding: 5px 10px; /* تم تصغير حجم الزر هنا */
+    background-color: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8em; /* تم تصغير حجم الخط هنا */
+    font-weight: 250;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.admin-action-btn:hover {
+    background-color: #2a2a2a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.6);
+}
+
+.admin-action-btn:active {
+    background-color: #3a3a3a;
+    transform: translateY(0);
+}
+
+/* Icons within buttons */
+.admin-action-btn i {
+    font-size: 0.9em; /* يمكنك تصغير حجم الأيقونة لتناسب الزر الأصغر */
+    color: #8ed6fb;
+    margin-right: 8px;
+}
