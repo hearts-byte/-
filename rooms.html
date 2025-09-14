@@ -10,44 +10,45 @@
 </head>
 <body>
    <script>
-    // تحقق من حالة المستخدم قبل إظهار الشات
     if (!localStorage.getItem('chatUserId')) {
-      // إذا لم يكن مسجل، انتقل مباشرة لصفحة التسجيل
       window.location.href = 'index.html';
     }
-  // إذا المستخدم اختار غرفة سابقاً، انتقل مباشرة للشات
-  const lastVisitedRoomId = localStorage.getItem('lastVisitedRoomId');
-if (lastVisitedRoomId) {
-    window.location.href = `chat.html?roomId=${lastVisitedRoomId}`;
-}
-</script>
+    const lastVisitedRoomId = localStorage.getItem('lastVisitedRoomId');
+    if (lastVisitedRoomId) {
+        window.location.href = `chat.html?roomId=${lastVisitedRoomId}`;
+    }
     </script>
-    <!-- الشريط العلوي -->
-   <div class="header-bar">
-    <div class="profile-icon">
-        <img id="userProfilePic" src="" alt="صورة المستخدم">
+    <div class="header-bar">
+        <div class="profile-icon">
+            <img id="userProfilePic" src="" alt="صورة المستخدم">
+        </div>
+        <div class="chat-icon">
+            <i class="fas fa-comments"></i>
+        </div>
     </div>
-    <div class="chat-icon">
-        <i class="fas fa-comments"></i>
+    <div class="user-modal" id="userModal">
+        <div class="modal-header">
+            <div class="modal-profile">
+                <img id="modalProfilePic" src="" alt="صورة المستخدم">
+                <h4 id="modalUserName"></h4>
+            </div>
+            <div id="modalUserRank" class="user-rank"></div>
+        </div>
+        <button id="logoutBtn" class="logout-btn">تسجيل الخروج</button>
     </div>
-</div>
-    <!-- زر الزائد فوق حقل البحث -->
     <div class="add-room-bar">
-        <button class="add-room-btn" id="addRoomBtn" title="إضافة غرفة">
+        <button class="add-room-btn floating-add-btn" id="addRoomBtn" title="إضافة غرفة">
             <i class="fas fa-plus"></i>
         </button>
     </div>
-    <!-- محتوى الصفحة -->
     <div class="main-content">
         <div class="search-box">
             <input type="text" id="roomSearch" placeholder="بحث">
             <i class="fas fa-search"></i>
         </div>
         <div class="room-list" id="room-list">
-            <!-- الغرف تظهر هنا ديناميكياً -->
         </div>
     </div>
-    <!-- مودال إضافة غرفة جديدة -->
     <div class="modal" id="addRoomModal">
         <div class="modal-content">
             <span class="close" id="closeAddRoom">&times;</span>
@@ -77,7 +78,6 @@ if (lastVisitedRoomId) {
                         للمشرفين فقط
                     </label>
                 </div>
-                <!-- حقل كلمة المرور يظهر فقط إذا تم اختيار مغلقة -->
                 <div class="form-group" id="roomPasswordGroup" style="display:none;">
                     <label for="roomPassword">كلمة مرور الغرفة</label>
                     <input type="password" id="roomPassword" name="roomPassword" maxlength="40" autocomplete="new-password" placeholder="أدخل كلمة المرور للغرفة">
@@ -87,7 +87,6 @@ if (lastVisitedRoomId) {
             <div id="addRoomMsg" class="modal-msg"></div>
         </div>
     </div>
-    <!-- مودال كلمة مرور الغرفة المغلقة -->
     <div class="modal" id="passwordModal">
         <div class="modal-content password-modal-content">
             <span class="close" id="closePasswordModal">&times;</span>
