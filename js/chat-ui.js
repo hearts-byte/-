@@ -890,6 +890,13 @@ export function showImageInModal(imageUrl) {
 // js/chat-ui.js
 // js/chat-ui.js
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // دالة لإضافة زر التسجيل في الشريط السفلي للزوار
 export function addRegistrationButtonToBottomBar(userRank) {
     const bottomBar = document.querySelector('.bottom-bar');
@@ -1051,7 +1058,8 @@ export async function handleRegistration(registerName, registerEmail, registerPa
     }
 
     // إنشاء معرف عشوائي للمستخدم الجديد
-    const userId = crypto.randomUUID();
+    // استدعاء الدالة الجديدة لتوليد معرف فريد
+const userId = generateUUID();
 
     // دمج بيانات الزائر مع الحساب الجديد، مع حفظ كلمة المرور
     const userDataToSave = {
