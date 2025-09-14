@@ -51,6 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const DEFAULT_USER_AVATAR = 'images/default-user.png';
   const DEFAULT_VISITOR_AVATAR = 'images/default-visitor.png';
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
   function populateAgeDropdown(selectElementId, minAge, maxAge) {
     const selectElement = document.getElementById(selectElementId);
     if (selectElement) {
@@ -195,7 +202,8 @@ try {
     return;
   }
   // إنشاء معرف عشوائي للمستخدم
-  const userId = crypto.randomUUID();
+  // استدعاء الدالة الجديدة لتوليد معرف فريد
+const userId = generateUUID();
 
   // حفظ بيانات المستخدم في Firestore بما فيها كلمة المرور
   await setDoc(doc(db, 'users', userId), {
