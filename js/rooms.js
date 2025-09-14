@@ -2,35 +2,59 @@ import { db, serverTimestamp } from './firebase-config.js';
 import { collection, getDocs, query, orderBy, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
 
-function selectRoom(roomId) {
-  // حفظ اختيار الغرفة
-  localStorage.setItem('currentRoom', roomId);
-  // الانتقال لصفحة الشات
-  window.location.href = 'chat.html';
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------------------------------
     // الكود المحدث لجلب وعرض صورة البروفايل
     // ----------------------------------------------------
-    const userProfilePicUrl = localStorage.getItem('chatUserAvatar');
     const userProfilePicElement = document.getElementById('userProfilePic');
+    const modalProfilePic = document.getElementById('modalProfilePic');
+    const modalUserName = document.getElementById('modalUserName');
+    const modalUserRank = document.getElementById('modalUserRank');
 
-    if (userProfilePicUrl && userProfilePicElement) {
-        userProfilePicElement.src = userProfilePicUrl;
-    } else if (userProfilePicElement) {
-        // إذا لم يتم العثور على صورة، يتم وضع صورة افتراضية
-        userProfilePicElement.src = 'https://via.placeholder.com/100x100.png?text=User';
+    const userProfilePicUrl = localStorage.getItem('chatUserAvatar');
+    const userName = localStorage.getItem('chatUserName');
+    const userRank = localStorage.getItem('chatUserRank');
+    const defaultAvatar = 'https://via.placeholder.com/100x100.png?text=User';
+
+    if (userProfilePicElement) {
+        userProfilePicElement.src = userProfilePicUrl || defaultAvatar;
     }
+    if (modalProfilePic) {
+        modalProfilePic.src = userProfilePicUrl || defaultAvatar;
+        modalUserName.textContent = userName || "زائر";
+        modalUserRank.textContent = userRank || "عضو";
+    }
+
     // ----------------------------------------------------
-    // نهاية الكود المحدث
+    // وظيفة إظهار/إخفاء مودال المستخدم
+    // ----------------------------------------------------
+    const profileIcon = document.querySelector('.profile-icon');
+    const userModal = document.getElementById('userModal');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    profileIcon.addEventListener('click', (e) => {
+        e.stopPropagation(); // منع إغلاق المودال مباشرة بعد فتحه
+        userModal.classList.toggle('show');
+    });
+
+    // إغلاق المودال عند النقر في أي مكان آخر
+    document.addEventListener('click', (e) => {
+        if (!userModal.contains(e.target) && !profileIcon.contains(e.target)) {
+            userModal.classList.remove('show');
+        }
+    });
+
+    // وظيفة تسجيل الخروج
+    logoutBtn.addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    });
     // ----------------------------------------------------
 
     const roomListContainer = document.getElementById('room-list');
     const searchInput = document.getElementById('roomSearch');
     let roomsData = [];
 
-    // مودال إضافة غرفة
     const addRoomBtn = document.getElementById('addRoomBtn');
     const addRoomModal = document.getElementById('addRoomModal');
     const closeAddRoom = document.getElementById('closeAddRoom');
@@ -43,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const roomPasswordGroup = document.getElementById('roomPasswordGroup');
     const roomPasswordInput = document.getElementById('roomPassword');
 
-    // مودال كلمة مرور الغرفة المغلقة
     const passwordModal = document.getElementById('passwordModal');
     const closePasswordModal = document.getElementById('closePasswordModal');
     const roomPasswordForm = document.getElementById('roomPasswordForm');
@@ -52,8 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let uploadedImageUrl = "";
 
-    // إظهار زر إضافة غرفة فقط لرتبة اونر اداري أو المالك
-    const userRank = localStorage.getItem('chatUserRank');
     if (addRoomBtn) {
         if (userRank === 'اونر اداري' || userRank === 'المالك') {
             addRoomBtn.style.display = 'inline-block';
@@ -62,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // فتح المودال إضافة غرفة
     addRoomBtn.addEventListener('click', () => {
         addRoomModal.classList.add('show');
         addRoomForm.reset();
@@ -73,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         roomPasswordGroup.style.display = "none";
         roomPasswordInput.value = "";
     });
-    // غلق المودال إضافة غرفة
     closeAddRoom.addEventListener('click', () => {
         addRoomModal.classList.remove('show');
     });
@@ -81,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === addRoomModal) addRoomModal.classList.remove('show');
     });
 
-    // إظهار/إخفاء حقل كلمة المرور عند اختيار مغلقة
     roomLockedCheckbox.addEventListener('change', () => {
         if (roomLockedCheckbox.checked) {
             roomPasswordGroup.style.display = "block";
@@ -91,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // رفع صورة الغرفة ومعاينتها
     roomImageFileInput.addEventListener('change', async (e) => {
         roomImagePreview.innerHTML = "";
         imageUploadProgress.innerHTML = "";
@@ -111,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // إرسال النموذج
     addRoomForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         addRoomMsg.textContent = '';
@@ -139,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageUrl,
                 locked,
                 adminOnly,
-                password: locked ? password : "", // حفظ كلمة المرور إذا الغرفة مغلقة فقط
+                password: locked ? password : "",
                 userCount: 1,
                 timestamp: serverTimestamp()
             });
@@ -155,12 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // فتح مودال كلمة المرور لغرفة مغلقة
     async function openPasswordModal(roomId) {
         passwordModal.classList.add('show');
         passwordModalMsg.textContent = '';
         enterRoomPasswordInput.value = '';
-        // حفظ roomId لاستخدامه في التحقق
         passwordModal.dataset.roomId = roomId;
     }
 
@@ -171,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === passwordModal) passwordModal.classList.remove('show');
     });
 
-    // تحقق من كلمة المرور عند محاولة دخول غرفة مغلقة
     roomPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         passwordModalMsg.textContent = '';
@@ -200,9 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // رسم بطاقة غرفة
     function renderRoomCard(room) {
-        // لو الغرفة مغلقة بكلمة مرور، لا تسمح بالدخول إلا بعد التحقق
         return `
             <div class="room-card" data-room-id="${room.id}" data-locked="${room.locked}" data-admin-only="${room.adminOnly}" data-password="${room.locked ? '1' : '0'}">
                 <div class="room-avatar">
@@ -216,21 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-user"></i>${room.userCount || 1}
                         </span>
                         ${room.locked ? `<span class="room-icon-group room-lock"><i class="fas fa-lock"></i></span>` : ''}
-                        ${room.adminOnly ? `<span class="room-icon-group" style="color:#d4af37"><i class="fas fa-crown"></i></span>` : ''}
+                        ${room.adminOnly ? `<span class="room-icon-group room-admin"><i class="fas fa-crown"></i></span>` : ''}
                     </div>
                 </div>
             </div>
         `;
     }
 
-    // رسم كل الغرف
     function renderRooms(rooms) {
         if (rooms.length === 0) {
             roomListContainer.innerHTML = `<div style="text-align:center;color:#888;font-size:1.1em;padding:20px;">لا توجد غرف متاحة حالياً.</div>`;
             return;
         }
         roomListContainer.innerHTML = rooms.map(renderRoomCard).join('');
-        // إضافة حدث النقر على كل غرفة
         Array.from(document.querySelectorAll('.room-card')).forEach(card => {
             card.onclick = async function () {
                 const roomId = card.getAttribute('data-room-id');
@@ -239,14 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isLocked && hasPassword) {
                     openPasswordModal(roomId);
                 } else {
-                    localStorage.setItem('currentRoom', roomId);  // حفظ رقم الغرفة المختارة
+                    localStorage.setItem('currentRoom', roomId);
                     window.location.href = `chat.html?roomId=${roomId}`;
                 }
             };
         });
     }
 
-    // جلب الغرف من قاعدة البيانات
     async function fetchRooms() {
         try {
             const q = query(collection(db, "rooms"), orderBy("timestamp", "asc"));
@@ -273,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchRooms();
 
-    // بحث ديناميكي
     searchInput.addEventListener('input', e => {
         const q = e.target.value.trim();
         if (!q) {
