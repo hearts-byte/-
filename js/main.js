@@ -727,45 +727,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ... (الكود السابق لا يتغير) ...
 
     try {
-        // عند الدخول للصفحة، اجلب بيانات كل المستخدمين والزوار
-        window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
-    } catch (error) {
-        console.error("خطأ في جلب البيانات الأولية للمستخدمين والزوار:", error);
-        const chatBox = document.querySelector('#chat-box .chat-box');
-        if (chatBox) {
-            chatBox.innerHTML = '<div style="text-align: center; color: red;">فشل تحميل بيانات المستخدمين. قد يكون هناك مشكلة في الاتصال.</div>';
-        }
-    }
+    // حاول جلب كل المستخدمين والزوار
+    window.allUsersAndVisitorsData = await getAllUsersAndVisitors(true);
+} catch (error) {
+    // إذا فشل الاتصال، لا تفعل شيئاً حالياً
+    console.error("خطأ في جلب البيانات: قد يكون هناك مشكلة في الاتصال.");
+}
 
-    // تحقق من وجود بيانات المستخدم في localStorage
-    let chatUserId = localStorage.getItem('chatUserId');
+let chatUserId = localStorage.getItem('chatUserId');
     let chatUserName = localStorage.getItem('chatUserName');
     let chatUserAvatar = localStorage.getItem('chatUserAvatar');
     let userType = localStorage.getItem('userType');
-    
-    // إذا لم يكن هناك معرف للمستخدم في localStorage، قم بإعادة التوجيه مرة واحدة فقط
-    if (!chatUserId) {
+let isOnline = navigator.onLine; // تحقق من حالة الاتصال بالإنترنت
+
+// إذا لم يكن هناك معرف للمستخدم في localStorage، قم بإعادة التوجيه مباشرة
+if (!chatUserId) {
+    window.location.href = 'index.html';
+    return;
+}
+
+// إذا كان الاتصال متاحًا (online)
+if (isOnline) {
+    // ابحث عن المستخدم في البيانات التي تم جلبها
+    const userData = window.allUsersAndVisitorsData?.find(user => user.id === chatUserId);
+
+    // إذا لم يتم العثور على بيانات المستخدم، يعني أن الحساب محذوف.
+    if (!userData) {
+        console.warn('الحساب غير موجود في قاعدة البيانات. يتم إعادة التوجيه.');
+        localStorage.clear(); // مسح كل بيانات المستخدم
         window.location.href = 'index.html';
         return;
     }
-
-    // تحقق من وجود بيانات المستخدم في allUsersAndVisitorsData
-    const userData = window.allUsersAndVisitorsData?.find(user => user.id === chatUserId);
-
-    if (!userData) {
-        // إذا لم يتم العثور على بيانات المستخدم، أظهر رسالة تحذير في الواجهة
-        console.warn('لم يتم العثور على بيانات الحساب، ربما بسبب مشكلة في الاتصال.');
-        const chatBox = document.querySelector('#chat-box .chat-box');
-        if (chatBox) {
-            const warningMessage = document.createElement('div');
-            warningMessage.style.textAlign = 'center';
-            warningMessage.style.color = 'orange';
-            warningMessage.style.padding = '10px';
-            warningMessage.textContent = 'تحذير: قد تواجه بعض المشاكل بسبب ضعف الاتصال.';
-            chatBox.insertBefore(warningMessage, chatBox.firstChild);
-        }
-        // يمكننا السماح للمستخدم بالبقاء والاستمرار
+} else {
+    // إذا كان الإنترنت مقطوعًا (offline)
+    console.warn('الإنترنت غير متوفر. يتم السماح بالبقاء في الصفحة مع تحذير.');
+    const chatBox = document.querySelector('#chat-box .chat-box');
+    if (chatBox) {
+        const warningMessage = document.createElement('div');
+        warningMessage.style.textAlign = 'center';
+        warningMessage.style.color = 'orange';
+        warningMessage.style.padding = '10px';
+        warningMessage.textContent = 'تحذير: قد تواجه بعض المشاكل بسبب عدم توفر الاتصال.';
+        chatBox.insertBefore(warningMessage, chatBox.firstChild);
     }
+}
+
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomIdFromUrl = urlParams.get('roomId');
@@ -1112,7 +1118,7 @@ if (currentUserId) {
         const messageInput = document.querySelector('#input-bar input');
         const sendButton = document.querySelector('#input-bar .send-btn');
         
-        // chat-ui.js
+        // main.js
 // ... (الاستيرادات الأخرى)
 
 // ... (بقية الكود)
@@ -1121,6 +1127,7 @@ const handleMessageSend = async () => {
     const messageText = messageInput.value.trim();
     if (!messageText) return;
 
+ // في ملف main.js، داخل دالة handleMessageSend
     if (messageText.toLowerCase() === '/clear') {
         messageInput.value = '';
 
@@ -1140,7 +1147,17 @@ const handleMessageSend = async () => {
             // 2. حذف جميع الرسائل من قاعدة البيانات
             await deleteChatRoomMessages(currentRoomId);
 
-            // 3. إرسال رسالة نظام نوعها clear (ستقوم جميع الواجهات بمسح الرسائل عند استقبالها)
+            // ✨ هذا هو التعديل الأساسي: مسح الواجهة فوراً
+            const chatBox = document.querySelector('#chat-box .chat-box');
+            if (chatBox) {
+                chatBox.innerHTML = ''; // مسح الرسائل من الواجهة
+                const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
+                const confirmationMessageText = `تم تنظيف الغرفة من قبل ${chatUserName}`;
+                const elem = createSystemMessageElement(confirmationMessageText);
+                chatBox.appendChild(elem); // إضافة رسالة النظام فوراً
+            }
+
+            // 3. إرسال رسالة نظام نوعها clear (ليراها المستخدمون الآخرون)
             const chatUserName = localStorage.getItem('chatUserName') || 'مستخدم مجهول';
             const confirmationMessage = `تم تنظيف الغرفة من قبل ${chatUserName}`;
             await sendSystemMessage({ text: confirmationMessage, type: 'clear' }, currentRoomId);
@@ -1153,12 +1170,7 @@ const handleMessageSend = async () => {
         }
         return;
     }
-
-    // ... (بقية كود إرسال الرسائل العادية)
-
-    
-
-    // ... (بقية كود إرسال الرسائل العادية)
+    // ... (بقية الكود)
 
 
     // كود إرسال الرسائل العادية
