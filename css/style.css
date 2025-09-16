@@ -77,8 +77,9 @@ body {
   background-color: #f0f2f5;
   box-sizing: border-box;
   padding-top: 130px; /* ارتفاع الشريط العلوي */
-  padding-bottom: 110px; /* ارتفاع شريط الإدخال (60px) + الشريط السفلي (60px) */
-  height: 107.5vh;
+  padding-bottom: 110px; /* ارتفاع شريط الإدخال + السفلي */
+  min-height: 100vh;   /* يغطي الشاشة كاملة */
+  height: 100dvh;      /* يدعم الهواتف الحديثة */
 }
 
 /* Chat Box (Messages Display Area) */
