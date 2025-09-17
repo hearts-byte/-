@@ -42,17 +42,18 @@ body::before {
 }
 
 /* ================== الحاوية الرئيسية ================== */
+/* ================== الحاوية الرئيسية ================== */
 .container {
     width: 100%;
-    max-width: 500px;
+    max-width: 700px; /* تم زيادة القيمة لتقليل المساحة البيضاء على الجوانب */
     background-color: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    padding: 30px;
+    padding: 15px; /* تم تقليل القيمة لتقريب المحتوى من الحواف */
     box-sizing: border-box;
-    /* تمت إزالة overflow-y: auto; لجعل الصفحة ثابتة */
-    max-height: 85vh; /* قيمة أقل لضمان أن المحتوى يتناسب مع الشاشة */
+    max-height: 85vh; 
 }
+
 
 /* ================== رأس الصفحة ================== */
 .header {
@@ -375,16 +376,21 @@ body::before {
 }
 
 /* ================== التوافق مع الشاشات ================== */
+/* ================== التوافق مع الشاشات ================== */
 @media (max-width: 768px) {
     .container {
         border-radius: 0;
         min-height: 100vh;
         box-shadow: none;
-        padding: 15px;
+        padding: 10px; /* تم تقليل المسافة الداخلية */
         max-width: 100%;
-        max-height: none; /* إزالة الحد الأقصى للارتفاع في الشاشات الصغيرة جدًا */
-        overflow-y: hidden; /* إخفاء التمرير في الشاشات الصغيرة */
+        max-height: none;
+        overflow-y: hidden;
     }
+}
+
+/* For small screens (phones in portrait) */
+
 
     .header {
         padding: 15px 20px;
@@ -471,7 +477,7 @@ body::before {
 /* For small screens (phones in portrait) */
 @media (max-width: 480px) {
     .container {
-        padding: 10px;
+        padding: 5px;
     }
     
     .header {
