@@ -664,18 +664,28 @@ export function setupPrivateMessageNotificationListener(currentUserId) {
   });
 }
 
-export async function resetUnreadCount(currentUserId, targetUserId) {
-  const chatId = getPrivateChatId(currentUserId, targetUserId);
-  const privateChatRef = doc(db, 'privateChats', chatId);
-  const unreadCounterField = `unreadCount_${currentUserId}`;
-  try {
-    await updateDoc(privateChatRef, {
-      [unreadCounterField]: 0
-    });
-    console.log(`Unread count reset for user ${currentUserId} in chat ${chatId}.`);
-  } catch (error) {
-    console.error('Error resetting unread count:', error);
-  }
+export async function resetUnreadCount(currentUserId, otherUserId) {
+    const chatDocId = [currentUserId, otherUserId].sort().join('_');
+    const chatDocRef = doc(db, 'privateChats', chatDocId);
+    
+    // ✨ الكود الجديد: جلب المستند أولاً للتحقق من وجوده
+    const docSnap = await getDoc(chatDocRef);
+
+    // إذا كان المستند موجودًا، قم بالتحديث. وإلا، لا تفعل شيئًا.
+    if (docSnap.exists()) {
+        const updateField = `unreadCount_${currentUserId}`;
+        try {
+            await updateDoc(chatDocRef, {
+                [updateField]: 0
+            });
+            console.log("تم إعادة تعيين عدد الرسائل غير المقروءة بنجاح.");
+        } catch (error) {
+            console.error("Error resetting unread count:", error);
+            // يمكنك هنا إضافة معالجة أخرى للأخطاء إذا لزم الأمر
+        }
+    } else {
+        console.log("لا يوجد مستند محادثة لإعادة تعيين عدد الرسائل غير المقروءة.");
+    }
 }
 
 export async function sendJoinMessage(roomId) {

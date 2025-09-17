@@ -12,7 +12,7 @@ import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showLevelInfoModal, showNotificationsModal, listenForUnreadNotifications } from './modals.js';
 import { uploadFileToCloudinary } from './cloudinary-utils.js';
 import { auth, db } from './firebase-config.js';
-import { doc, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { doc, onSnapshot, updateDoc, getDoc, deleteDoc, query, where, and, or, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 export let allUsersAndVisitorsData = [];
 let privateChatModal = null;
@@ -34,16 +34,8 @@ let userType = null;
 
 // js/main.js
  
-// ...
- 
 let isReloading = false;
  
-// إضافة مستمع لحالة المستخدم لتحديث الرتبة والصلاحيات عند تغييرها
-// في ملف main.js
-// ... (الاستيرادات والدوال الأخرى) ...
-
-// في ملف main.js
-// ... (الكود السابق) ...
 
 auth.onAuthStateChanged(user => {
     if (user) {
@@ -172,6 +164,10 @@ function scrollToBottom() {
 }
 
 async function createPrivateChatModal(buttonElement) {
+    if (privateChatModal && privateChatModal.classList.contains('show')) {
+        return; 
+    }
+
     hideAllOpenModals();
 
     if (privateChatModal) {
@@ -182,10 +178,10 @@ async function createPrivateChatModal(buttonElement) {
     privateChatModal = document.createElement('div');
     privateChatModal.classList.add('private-chat-modal-strip');
     privateChatModal.innerHTML = `
-        <div class="modal-header">
-            <h3>الرسائل الخاصة</h3>
-            <button class="close-btn">&times;</button>
-        </div>
+       <div class="modal-header">
+    <h3>الرسائل الخاصة</h3>
+    <button class="delete-all-btn"><i class="fas fa-trash-alt"></i></button>
+</div>
         <ul class="private-chat-list">
             <div class="spinner-container">
                 <div class="loading-spinner"></div>
@@ -218,7 +214,10 @@ async function createPrivateChatModal(buttonElement) {
     privateChatModal.style.left = `${modalLeft}px`;
     privateChatModal.style.top = `${modalTop}px`;
     privateChatModal.classList.add('show');
-    privateChatModal.querySelector('.close-btn').addEventListener('click', () => hidePrivateChatModal());
+    privateChatModal.querySelector('.delete-all-btn').addEventListener('click', () => {
+    showDeleteAllConfirmationModal(deleteAllPrivateChats);
+});
+
     document.addEventListener('click', handlePrivateChatModalOutsideClick);
 
     const currentUserId = localStorage.getItem('chatUserId');
@@ -228,7 +227,6 @@ async function createPrivateChatModal(buttonElement) {
             const contacts = await getPrivateChatContacts(currentUserId);
             ulElement.innerHTML = '';
             if (contacts.length === 0) {
-                // ✨ التعديل هنا: إضافة الصورة داخل الـ li
                 ulElement.innerHTML = `
                     <li class="empty-chat-message">
                         <img src="nodata.png" alt="صندوق رسائل فارغ" class="empty-chat-icon">
@@ -242,10 +240,11 @@ async function createPrivateChatModal(buttonElement) {
                     li.setAttribute('data-user-id', contact.id);
                     const unreadBadge = contact.unreadCount > 0 ? `<span class="unread-count">${contact.unreadCount}</span>` : '';
                     li.innerHTML = `
-                        <img src="${contact.avatar || 'images/default-user.png'}" alt="${contact.name}" class="user-avatar-small">
-                        <span class="user-name">${contact.name}</span>
-                        ${unreadBadge}
-                    `;
+    <img src="${contact.avatar || 'images/default-user.png'}" alt="${contact.name}" class="user-avatar-small">
+    <span class="user-name">${contact.name}</span>
+    ${unreadBadge}
+    <span class="delete-contact-btn" data-user-id="${contact.id}">&times;</span>
+`;
                     li.addEventListener('click', () => {
                         hidePrivateChatModal();
                         createAndShowPrivateChatDialog(contact);
@@ -253,6 +252,49 @@ async function createPrivateChatModal(buttonElement) {
                     ulElement.appendChild(li);
                 });
             }
+
+            ulElement.querySelectorAll('.delete-contact-btn').forEach(deleteBtn => {
+                deleteBtn.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    const contactIdToDelete = deleteBtn.getAttribute('data-user-id');
+                    const currentUserId = localStorage.getItem('chatUserId');
+                    if (!currentUserId || !contactIdToDelete) {
+                        console.error("معرف المستخدم أو جهة الاتصال غير موجود.");
+                        return;
+                    }
+                    try {
+                        const chatQuery = query(collection(db, 'privateChats'), 
+                                                or(
+                                                    and(where('senderId', '==', currentUserId), where('receiverId', '==', contactIdToDelete)),
+                                                    and(where('senderId', '==', contactIdToDelete), where('receiverId', '==', currentUserId))
+                                                ));
+                        const chatSnapshot = await getDocs(chatQuery);
+                        if (!chatSnapshot.empty) {
+                            const chatDoc = chatSnapshot.docs[0];
+                            await deleteDoc(doc(db, 'privateChats', chatDoc.id));
+                        }
+                        const listItem = deleteBtn.closest('li');
+                        if (listItem) {
+                            listItem.remove();
+                            console.log(`تم حذف المحادثة بنجاح: ${contactIdToDelete}`);
+                            const ulElement = privateChatModal.querySelector('.private-chat-list');
+                            const remainingItems = ulElement.querySelectorAll('li:not(.empty-chat-message)');
+                            if (remainingItems.length === 0) {
+                                ulElement.innerHTML = `
+                                    <li class="empty-chat-message">
+                                        <img src="nodata.png" alt="صندوق رسائل فارغ" class="empty-chat-icon">
+                                        <p>صندوق رسائلك فارغ</p>
+                                    </li>
+                                `;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("خطأ في حذف المحادثة:", error);
+                        alert("فشل حذف المحادثة. يرجى التأكد من صلاحيات الحذف.");
+                    }
+                });
+            });
+
         } catch (error) {
             console.error('خطأ في جلب جهات الاتصال الخاصة:', error);
             const ulElement = privateChatModal.querySelector('.private-chat-list');
@@ -263,6 +305,7 @@ async function createPrivateChatModal(buttonElement) {
         ulElement.innerHTML = `<li style="text-align: center; padding: 10px; color: red;">الرجاء تسجيل الدخول لعرض المحادثات الخاصة.</li>`;
     }
 }
+
 
 function handleOnlineUsersModalOutsideClick(event) {
     const onlineUsersButton = document.querySelector('#online-users-btn');
@@ -633,6 +676,77 @@ export function renderMessages(docs, clear = false) {
 
 // في ملف main.js
 // ... (بقية الكود) ...
+async function showDeleteAllConfirmationModal(onConfirm) {
+    let confirmationModal = document.querySelector('.confirmation-modal');
+    if (!confirmationModal) {
+        confirmationModal = document.createElement('div');
+        confirmationModal.classList.add('confirmation-modal');
+        confirmationModal.innerHTML = `
+            <p>هل أنت متأكد من أنك تريد حذف جميع جهات الاتصال والمحادثات؟</p>
+            <div class="modal-buttons">
+                <button class="confirm-btn">تأكيد</button>
+                <button class="cancel-btn">إلغاء</button>
+            </div>
+        `;
+        document.body.appendChild(confirmationModal);
+    }
+
+    confirmationModal.style.display = 'block';
+
+    const confirmBtn = confirmationModal.querySelector('.confirm-btn');
+    const cancelBtn = confirmationModal.querySelector('.cancel-btn');
+
+    confirmBtn.onclick = async (event) => {
+        event.stopPropagation(); // ✨ منع إغلاق المودال
+        await onConfirm();
+        confirmationModal.style.display = 'none';
+    };
+
+    cancelBtn.onclick = (event) => {
+        event.stopPropagation(); // ✨ منع إغلاق المودال
+        confirmationModal.style.display = 'none';
+    };
+}
+
+
+async function deleteAllPrivateChats() {
+    const currentUserId = localStorage.getItem('chatUserId');
+    if (!currentUserId) {
+        console.error("معرف المستخدم غير موجود.");
+        return;
+    }
+
+    try {
+        const chatQuery = query(collection(db, 'privateChats'), 
+                                or(
+                                    where('senderId', '==', currentUserId),
+                                    where('receiverId', '==', currentUserId)
+                                ));
+        const chatSnapshot = await getDocs(chatQuery);
+        
+        const deletePromises = [];
+        chatSnapshot.forEach(docSnap => {
+            deletePromises.push(deleteDoc(doc(db, 'privateChats', docSnap.id)));
+        });
+        
+        await Promise.all(deletePromises);
+
+        // ✨ تحديث واجهة المستخدم بعد الحذف
+        const ulElement = privateChatModal.querySelector('.private-chat-list');
+        ulElement.innerHTML = `
+            <li class="empty-chat-message">
+                <img src="nodata.png" alt="صندوق رسائل فارغ" class="empty-chat-icon">
+                <p>صندوق رسائلك فارغ</p>
+            </li>
+        `;
+        console.log("تم حذف جميع المحادثات بنجاح.");
+
+    } catch (error) {
+        console.error("خطأ في حذف جميع المحادثات:", error);
+        alert("فشل حذف المحادثات. يرجى المحاولة مرة أخرى.");
+    }
+}
+
 
 // دالة جديدة للتحقق من حالة الكتم وتحديث واجهة المستخدم
  
@@ -758,20 +872,7 @@ if (isOnline) {
         window.location.href = 'index.html';
         return;
     }
-} else {
-    // إذا كان الإنترنت مقطوعًا (offline)
-    console.warn('الإنترنت غير متوفر. يتم السماح بالبقاء في الصفحة مع تحذير.');
-    const chatBox = document.querySelector('#chat-box .chat-box');
-    if (chatBox) {
-        const warningMessage = document.createElement('div');
-        warningMessage.style.textAlign = 'center';
-        warningMessage.style.color = 'orange';
-        warningMessage.style.padding = '10px';
-        warningMessage.textContent = 'تحذير: قد تواجه بعض المشاكل بسبب عدم توفر الاتصال.';
-        chatBox.insertBefore(warningMessage, chatBox.firstChild);
-    }
 }
-
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomIdFromUrl = urlParams.get('roomId');
