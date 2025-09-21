@@ -463,17 +463,15 @@ body {
   direction: rtl; /* هذا قد يكون موجودًا بالفعل في style.css العام */
 }
 
-/* ---------------------------------------------------------------------- */
-/* الأنماط المحدثة للشريط العلوي (Top Bar) */
-/* ---------------------------------------------------------------------- */
+/* الأنماط العامة للشريط العلوي */
 .top-bar {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 0;
-  background: #4A148C;
+  background: #673ab7;
   color: white;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgb(0,0,0,0.2);
   position: fixed;
   top: 0;
   width: 100%;
@@ -497,85 +495,98 @@ body {
   gap: 2px;
 }
 
-/* **جعل أنماط الأزرار الخاصة بالشريط العلوي محددة أكثر** */
+/* الأنماط المشتركة لجميع الأزرار */
 .top-buttons .btn,
 .top-buttons .profile {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex-basis: 0;
   flex-grow: 1;
-  flex-shrink: 1;
   aspect-ratio: 1 / 1;
   height: 100%;
   box-sizing: border-box;
   font-size: 0.75em;
   font-weight: 500;
   padding: 2px 0;
-  border-radius: 8px;
   text-align: center;
   color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   overflow: hidden;
   position: relative;
+  font-family: 'Almarai', sans-serif;
+  
+  /* الأنماط من الكود القديم التي ستطبق على كل زر */
+  border-radius: 10px;
+  box-shadow: #15268296 1px 0 9px 0;
 }
 
-/* **جعل أنماط الأيقونات والنصوص في الشريط العلوي محددة أيضاً** */
-.top-buttons .btn i, 
-.top-buttons .btn img, 
-.top-buttons .btn span {
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
-  margin-bottom: -5px;
+/* ألوان الخلفية المخصصة للأزرار (من الكود القديم) */
+.head_option1 {
+    background: linear-gradient(117deg,#00bcd4,#ff8100);
+}
+.head_option3 {
+    background: linear-gradient(117deg,#47dfff,#0094c1);
+}
+.head_option4 {
+    background: linear-gradient(117deg, #ffd147, #ff8100);
+}
+.head_option5 {
+    background: linear-gradient(117deg, #b8ff42, #4caf50);
+}
+.head_option6 {
+    background: linear-gradient(117deg, #10ff1a, #00ad07);
+}
+.head_option8 {
+    background: linear-gradient(330deg, rgba(42, 123, 155, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(237, 221, 83, 1) 100%);
 }
 
-/* **ألوان الأزرار كما هي** */
-.menu { background: linear-gradient(to top, #32b55b, #43e271); }
-.audio { background: linear-gradient(to top, #30b15c, #3edb6d); }
-.friend { background: linear-gradient(to top, #e37e3d, #e39d57); }
-.private { background: linear-gradient(to top, #57b1e4, #46a3db); }
-.notify { background: linear-gradient(to top, #f8a13a, #e69138); }
-.online { background: linear-gradient(to top, #38c6ff, #43c9ff); }
-
-/* أنماط البروفايل والشارة */
+/* أنماط خاصة للبروفايل */
 .top-buttons .profile {
-  border: 2px solid white;
-  background: #555;
-  border-radius: 8px;
-  height: 50px;
-  position: relative;
+    background: #673ab7;
+    border: 2px solid white;
 }
 
-/* **أضف هذا النمط لضمان عرض الصورة بالكامل** */
 .top-buttons .profile img {
   width: 100%;
   height: 100%;
-  object-fit: center; /* هذا يضمن عرض الصورة بالكامل */
-  border-radius: 8px; /* اجعل زوايا الصورة متطابقة مع الحاوية */
+  object-fit: cover;
+  border-radius: 8px;
 }
 
-.top-buttons .profile .badge {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: #f7a228;
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 12px;
-  font-weight: bold;
-  border: 2px solid #4A148C;
-  box-sizing: border-box;
+/* أنماط الأيقونات والنصوص */
+./* أنماط الأيقونات والنصوص */
+.top-buttons .btn i, 
+.top-buttons .btn img {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  margin-bottom: -4px; /* هذه الخاصية لتقريب الأيقونات من النص */
 }
+
+.top-buttons .btn br {
+  display: none; /* إزالة فاصل السطر الزائد */
+}
+
+.top-buttons .btn {
+  /* هذه الخاصية تُحكم في المسافة بين الأيقونة والنص ككل */
+  line-height: 1.7; 
+}
+
+.top-buttons .btn span.badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: red;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
 
 /* Private Chat Modal Strip */
 /* Private Chat Modal Strip */
@@ -1746,6 +1757,7 @@ border: 1px solid #ccc; /* إضافة حدود صلبة بلون رمادي فا
 .top-bar .btn.report {
     visibility: hidden;
     pointer-events: none; /* لضمان عدم قابليته للنقر وهو مخفي */
+    background: linear-gradient(117deg, #ffd147, #ff8100); /* من فئة head_option4 */
 }
 
 /* إخفاء زر الخاص افتراضياً (سيظهر إذا لم يكن المستخدم زائراً) */
@@ -2419,14 +2431,12 @@ border: 1px solid #ccc; /* إضافة حدود صلبة بلون رمادي فا
     z-index: 10;
 }
 
-/* تنسيقات المنشن */
-.message-text .mentioned-user {
+.mentioned-user {
   font-weight: bold;
-  color: #FFC107; /* اللون الأصفر الذي طلبته */
-  background-color: rgba(255, 193, 7, 0.2);
+  color: #ffcc00; /* لون ذهبي */
+  background-color: rgba(255, 204, 0, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
-  cursor: pointer;
 }
 
 /* تنسيقات الصور داخل رسالة الدردشة */
