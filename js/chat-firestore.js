@@ -34,12 +34,21 @@ import {
 } from './chat-ui.js';
 import { RANK_ORDER } from './constants.js';
 
+
+// استبدل 'YOUR_APPLICATION_ID' و 'YOUR_SEARCH_ONLY_API_KEY' بمفاتيحك الخاصة
+const client = algoliasearch('BLAEWYZHN7', '333bd6343b1c40d06652372ae8fbe83f');
+const index = client.initIndex('users'); // تأكد من أن اسم الفهرس هو نفسه الذي أنشأته
+
 // في ملف js/chat-firestore.js
 // ... (الاستيرادات)
 // ...
  
 // دالة المستمع التي تراقب التغييرات في Firestore
 // في ملف chat-firestore.js
+// دالة لتهريب الأحرف الخاصة في التعبير المنتظم
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& تعني السلسلة المجدولة بالكامل
+}
 
  
 export function listenForUserRankChanges() {
@@ -267,11 +276,26 @@ export async function sendMessage(messageText, roomId, imageUrl = null) {
     }
   }
 
-  const newMessage = {
+  // في دالة sendMessage بملف chat-firestore.js
+// هذا الكود يتأكد من أن الرسالة النهائية لا تحتوي على الأقواس
+
+// ... (الكود السابق) ...
+
+// هذا الجزء هو المسؤول عن حذف الأقواس من الرسالة قبل إرسالها لقاعدة البيانات
+const mentionRegex = /\[(.*?)\]/g;
+const mentionedNames = [];
+let match;
+while ((match = mentionRegex.exec(messageText)) !== null) {
+  mentionedNames.push(match[1]);
+}
+
+const cleanMessageText = messageText.replace(mentionRegex, (match, p1) => p1);
+
+const newMessage = {
     user: currentUserName,
     senderId: currentUserId,
     avatar: currentUserAvatar,
-    text: messageText ? messageText.trim() : '',
+    text: cleanMessageText ? cleanMessageText.trim() : '',
     type: 'chat',
     timestamp: serverTimestamp(),
     userNum: '100',
@@ -288,20 +312,47 @@ export async function sendMessage(messageText, roomId, imageUrl = null) {
       content: activeQuoteData.content
     };
   }
-  try {
-    if (messageText) {
-      const allUsers = await getAllUsersAndVisitors();
-      const mentionedUser = allUsers.find(user =>
-        messageText.includes(user.name)
-      );
-      if (mentionedUser) {
-        newMessage.mentionedUserId = mentionedUser.id;
-        newMessage.mentionedUserName = mentionedUser.name;
+  
+  // ✨ بداية الكود الجديد للمنشن
+  // ✨ الكود المحدث
+try {
+  const mentionRegex = /\[(.*?)\]/g;
+  const mentionedUserIds = [];
+  let match;
+
+  while ((match = mentionRegex.exec(messageText)) !== null) {
+    const mentionedName = match[1];
+
+    // البحث عن المستخدم في الكاش المحلي أولاً (يشمل الزوار)
+    // في دالة sendMessage بملف chat-firestore.js
+const mentionedUser = window.allUsersAndVisitorsData.find(user => user.name === mentionedName);
+if (mentionedUser) {
+  mentionedUserIds.push(mentionedUser.id);
+} else {
+      // إذا لم يتم العثور عليه في الكاش، قم بالبحث في Algolia
+      try {
+        const { hits } = await index.search(mentionedName, {
+          attributesToRetrieve: ['objectID'],
+          hitsPerPage: 1
+        });
+        if (hits.length > 0) {
+          mentionedUserIds.push(hits[0].objectID);
+        }
+      } catch (error) {
+        console.error("Failed to search for mention in Algolia:", error);
       }
     }
-  } catch (error) {
-    console.error('Error checking mentions:', error);
   }
+
+  // إذا تم العثور على أي منشن، أضف حقل 'mentions' إلى الرسالة
+  if (mentionedUserIds.length > 0) {
+    newMessage.mentions = mentionedUserIds;
+  }
+} catch (error) {
+  console.error('Error processing mentions:', error);
+}
+
+  // ✨ نهاية الكود الجديد
 
   try {
     const messagesCol = collection(db, 'rooms', roomId, 'messages');
@@ -313,6 +364,7 @@ export async function sendMessage(messageText, roomId, imageUrl = null) {
     alert('Failed to send message. Please try again.');
   }
 }
+
 
 export async function sendSystemMessage(message, roomId) {
   if (!roomId || !message) return;

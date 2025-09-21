@@ -563,13 +563,7 @@ export function hidePrivateChatDialog() {
   }
 }
 
-function mentionUserInInput(userName) {
-  const chatInput = document.querySelector('#input-bar input');
-  if (chatInput) {
-    chatInput.value += `${userName} `;
-    chatInput.focus();
-  }
-}
+
 
 export function createMessageElement(messageData) {
   const messageItem = document.createElement('div');
@@ -616,6 +610,7 @@ export function createMessageElement(messageData) {
   const messageInfoDiv = document.createElement('div');
   messageInfoDiv.classList.add('message-info');
   let messageContentHtml = '';
+
   if (messageData.imageUrl) {
     messageContentHtml += `
       <div class="message-image-container">
@@ -623,6 +618,7 @@ export function createMessageElement(messageData) {
       </div>
     `;
   }
+
   let messageTextContent = '';
   if (messageData.quoted && messageData.quoted.senderName && messageData.quoted.content) {
     messageTextContent += `
@@ -632,18 +628,31 @@ export function createMessageElement(messageData) {
       </div>
     `;
   }
-  if (messageData.text) {
-    const isMentioned =
-      (messageData.mentionedUserId && messageData.mentionedUserId === currentUserId) ||
-      (messageData.mentionedUserName && messageData.mentionedUserName === currentUserName);
 
-    if (isMentioned && messageData.user !== currentUserName) {
-      const regex = new RegExp(currentUserName, 'gi');
-      messageTextContent += messageData.text.replace(regex, `<span class="mentioned-user">${currentUserName}</span>`);
+  if (messageData.text) {
+    let messageHtml = messageData.text;
+
+    // أولاً: قم بإزالة الأقواس من النص بالكامل.
+    const cleanText = messageHtml.replace(/\[|\]/g, '');
+
+    // ثانياً: إذا كان المستخدم الحالي هو المقصود، قم بتلوين اسمه.
+    const currentUserId = localStorage.getItem('chatUserId');
+
+    if (messageData.mentions && messageData.mentions.includes(currentUserId)) {
+        const mentionedUser = window.allUsersAndVisitorsData.find(user => user.id === currentUserId);
+        if (mentionedUser) {
+            const escapedName = mentionedUser.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`${escapedName}`, 'gi');
+            messageHtml = cleanText.replace(regex, `<span class="mentioned-user">${mentionedUser.name}</span>`);
+        }
     } else {
-      messageTextContent += messageData.text;
+        // إذا لم يكن هو المقصود، استخدم النص النظيف بدون تلوين.
+        messageHtml = cleanText;
     }
-  }
+
+    messageTextContent += messageHtml;
+}
+
   if (messageTextContent.length > 0) {
     messageContentHtml += `<div class="message-text ${customMessageClass}">${messageTextContent}</div>`;
   }
@@ -695,34 +704,33 @@ export function createMessageElement(messageData) {
     messageNameDiv.addEventListener('click', (event) => {
       event.stopPropagation();
       const userName = messageNameDiv.dataset.userName;
-      mentionUserInInput(userName);
+      const chatInput = document.querySelector('#input-bar input');
+      if (chatInput) {
+        chatInput.value += `[${userName}] `;
+        chatInput.focus();
+      }
     });
   }
 
   const userAvatarDiv = messageItem.querySelector('.user-avatar');
-if (userAvatarDiv) {
-  userAvatarDiv.addEventListener('click', (event) => {
-    event.stopPropagation();
-    const userId = userAvatarDiv.dataset.userId;
-
-    // ✨ ابحث عن الكائن الكامل للمستخدم في ذاكرة التخزين المؤقت.
-    const fullUserData = window.allUsersAndVisitorsData.find(user => user.id === userId);
-
-    if (fullUserData) {
-      // إذا تم العثور على المستخدم في الذاكرة المؤقتة، استخدم بياناته الكاملة.
-      createUserInfoModal(userAvatarDiv, fullUserData, window.allUsersAndVisitorsData);
-    } else {
-      // إذا لم يتم العثور عليه (لسبب ما)، عد إلى البيانات الأساسية.
-      const partialUserData = {
-        id: userId,
-        name: userAvatarDiv.dataset.userName,
-        avatar: userAvatarDiv.dataset.userAvatar
-      };
-      createUserInfoModal(userAvatarDiv, partialUserData, window.allUsersAndVisitorsData);
-    }
-  });
-}
-
+  if (userAvatarDiv) {
+    userAvatarDiv.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const userId = userAvatarDiv.dataset.userId;
+      const fullUserData = window.allUsersAndVisitorsData.find(user => user.id === userId);
+      if (fullUserData) {
+        createUserInfoModal(userAvatarDiv, fullUserData, window.allUsersAndVisitorsData);
+      } else {
+        const partialUserData = {
+          id: userId,
+          name: userAvatarDiv.dataset.userName,
+          avatar: userAvatarDiv.dataset.userAvatar
+        };
+        createUserInfoModal(userAvatarDiv, partialUserData, window.allUsersAndVisitorsData);
+      }
+    });
+  }
+  
   const dotsOptionsDiv = messageItem.querySelector('.dots-options');
   if (dotsOptionsDiv) {
     dotsOptionsDiv.addEventListener('click', (event) => {
