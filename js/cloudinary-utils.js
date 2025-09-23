@@ -9,6 +9,8 @@ const CLOUDINARY_VIDEO_UPLOAD_PRESET = 'video_uploads'; // يمكنك تغيير
  * @param {function(number)=} onProgress دالة لمعالجة تحديثات التقدم (اختيارية).
  * @returns {Promise<string>} رابط الملف بعد الرفع.
  */
+//js/cloudinary-utils.js
+
 export function uploadFileToCloudinary(file, onProgress) {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -22,15 +24,16 @@ export function uploadFileToCloudinary(file, onProgress) {
         let resourceType;
         let uploadPreset;
 
-        // التحقق من نوع الملف
+        // ✨ التعديل: إضافة شرط للتعامل مع ملفات الصوت
         if (file.type.startsWith('image/')) {
             resourceType = 'image';
             uploadPreset = CLOUDINARY_IMAGE_UPLOAD_PRESET;
-        } else if (file.type.startsWith('video/')) {
+        } else if (file.type.startsWith('video/') || file.type.startsWith('audio/')) { // ✨ التعديل هنا
             resourceType = 'video';
             uploadPreset = CLOUDINARY_VIDEO_UPLOAD_PRESET;
         } else {
-            return reject('نوع الملف غير مدعوم. يدعم فقط الصور والفيديوهات.');
+            // ✨ التعديل: تغيير رسالة الخطأ لتكون أكثر دقة
+            return reject('نوع الملف غير مدعوم. يدعم فقط الصور، الفيديوهات، والأغاني.');
         }
 
         formData.append('upload_preset', uploadPreset);
@@ -66,11 +69,4 @@ export function uploadFileToCloudinary(file, onProgress) {
 
         xhr.send(formData);
     });
-}
-
-// دالة لحذف صورة من Cloudinary
-export async function deleteImageFromCloudinary(publicId) {
-    console.warn("وظيفة حذف الصور من Cloudinary تتطلب تنفيذًا آمنًا على الخادم (backend) باستخدام التوقيع.");
-    alert("وظيفة الحذف غير متاحة في الواجهة الأمامية لأسباب أمنية. الرجاء تنفيذها على الخادم.");
-    return false;
 }

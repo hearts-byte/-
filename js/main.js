@@ -6,7 +6,7 @@ import {
 } from './chat-ui.js';
 import { 
     loadInitialMessages, loadMoreMessages, listenForNewMessages,
-    sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms, listenForUserRankChanges
+    sendMessage, getPrivateChatContacts, getAllUsersAndVisitors, getUserData, setupPrivateMessageNotificationListener, sendJoinMessage, deleteChatRoomMessages, sendSystemMessage, getChatRooms, listenForUserRankChanges, updateUserData
 } from './chat-firestore.js';
 import { RANK_ORDER, RANK_IMAGE_MAP, RANK_PERMISSIONS } from './constants.js';
 import { showLevelInfoModal, showNotificationsModal, listenForUnreadNotifications } from './modals.js';
@@ -831,14 +831,223 @@ export async function checkMuteStatusAndUpdateUI() {
     }
 }
 
+function updateConnectionStatus(isOnline) {
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.querySelector('.send-btn');
+    const emojiButton = document.querySelector('.emoji-btn-circle');
+    const plusButton = document.getElementById('plus-btn-toggle');
+    const imageUpload = document.getElementById('image-upload-input');
+
+    if (messageInput && sendButton) {
+        if (isOnline) {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.placeholder = 'اكتب هنا...';
+            // قد تحتاج إلى تفعيل الأزرار الأخرى أيضًا
+            if (emojiButton) emojiButton.disabled = false;
+            if (plusButton) plusButton.disabled = false;
+            if (imageUpload) imageUpload.disabled = false;
+
+            // إظهار رسالة للمستخدم
+            
+        } else {
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            messageInput.placeholder = 'غير متصل بالإنترنت ⚠️';
+            // تعطيل الأزرار الأخرى
+            if (emojiButton) emojiButton.disabled = true;
+            if (plusButton) plusButton.disabled = true;
+            if (imageUpload) imageUpload.disabled = true;
+
+            // إظهار رسالة تحذير
+            
+        }
+    }
+}
+
+//js/main.js
+
+//js/main.js
+
+/**
+ * دالة لإنشاء وإضافة نافذة رفع الأغاني المنبثقة.
+ * هذه الدالة يجب أن يتم استدعاؤها مرة واحدة فقط عند تحميل الصفحة.
+ */
+function createAndAppendMusicUploadModal() {
+    if (document.getElementById('music-upload-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'music-upload-modal';
+    modal.className = 'upload-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-btn" id="close-music-modal">&times;</span>
+            <div id="upload-ui-container" class="ui-container active">
+                <label for="music-upload-input" class="custom-file-upload">
+                    <i class="fas fa-file-audio"></i> اختر ملف صوتي
+                </label>
+                <input type="file" id="music-upload-input" accept="audio/*" style="display: none;">
+            </div>
+            
+            <div id="new-progress-bar-container" class="new-progress-bar-container ui-container">
+                <div id="new-progress-bar" class="new-progress-bar"></div>
+            </div>
+
+            <div id="audio-preview-container" class="audio-preview-container ui-container">
+                <audio id="music-player" controls></audio>
+                <div class="preview-buttons">
+                    <button id="delete-music-btn" class="delete-btn">حذف</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.modal-content');
+    if (modalContent) {
+        modalContent.style.width = '320px';
+        modalContent.style.height = '160px';
+    }
+
+    const uploadUI = document.getElementById('upload-ui-container');
+    const newProgressUI = document.getElementById('new-progress-bar-container');
+    const audioPreviewUI = document.getElementById('audio-preview-container');
+    const musicPlayer = document.getElementById('music-player');
+    const deleteBtn = document.getElementById('delete-music-btn');
+    const musicUploadInput = document.getElementById('music-upload-input');
+
+    const setUIState = (state) => {
+        const containers = [uploadUI, newProgressUI, audioPreviewUI];
+        containers.forEach(container => container.classList.remove('active'));
+        if (state === 'upload') {
+            uploadUI.classList.add('active');
+        } else if (state === 'progress') {
+            newProgressUI.classList.add('active');
+        } else if (state === 'preview') {
+            audioPreviewUI.classList.add('active');
+        }
+    };
+    
+    const saveMusicUrlToFirestore = async (url) => {
+        const currentUserId = localStorage.getItem('chatUserId');
+        if (!currentUserId) {
+            console.error('فشل في حفظ الرابط: User ID غير موجود.');
+            return;
+        }
+
+        try {
+            await updateUserData(currentUserId, { musicUrl: url });
+            console.log('تم حفظ رابط الملف الصوتي في Firestore بنجاح:', url);
+        } catch (error) {
+            console.error('فشل حفظ الرابط في Firestore:', error);
+        }
+    };
+
+    deleteBtn.addEventListener('click', async () => {
+        const currentUserId = localStorage.getItem('chatUserId');
+        const confirmDelete = confirm('هل أنت متأكد من حذف الملف الصوتي؟');
+        if (confirmDelete && currentUserId) {
+            try {
+                await updateUserData(currentUserId, { musicUrl: null });
+                console.log('تم حذف رابط الملف الصوتي من Firestore.');
+                setUIState('upload');
+            } catch (error) {
+                console.error('فشل حذف الرابط من Firestore:', error);
+            }
+        }
+    });
+
+    musicUploadInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setUIState('progress');
+
+        try {
+            const musicUrl = await uploadFileToCloudinary(file, (progress) => {
+                document.getElementById('new-progress-bar').style.width = `${progress}%`;
+            });
+
+            if (musicUrl) {
+                musicPlayer.src = musicUrl;
+                setUIState('preview');
+                await saveMusicUrlToFirestore(musicUrl);
+            }
+        } catch (error) {
+            console.error('فشل رفع الأغنية:', error);
+            setUIState('upload');
+            alert('فشل رفع الأغنية. يرجى المحاولة مرة أخرى.');
+        }
+    });
+
+    document.getElementById('close-music-modal').addEventListener('click', () => {
+        modal.style.display = 'none';
+        // ✨ لا تقم بتعيين الحالة هنا
+    });
+    
+    // ✨ وظيفة جديدة: لجلب الرابط المحفوظ عند فتح النافذة
+    const loadSavedMusicUrl = async () => {
+        const currentUserId = localStorage.getItem('chatUserId');
+        if (currentUserId) {
+            try {
+                const userDocRef = doc(db, 'users', currentUserId);
+                const userDocSnap = await getDoc(userDocRef);
+                const userData = userDocSnap.data();
+                if (userData && userData.musicUrl) {
+                    musicPlayer.src = userData.musicUrl;
+                    setUIState('preview');
+                } else {
+                    setUIState('upload');
+                }
+            } catch (error) {
+                console.error('حدث خطأ أثناء جلب الرابط:', error);
+                setUIState('upload');
+            }
+        } else {
+            setUIState('upload');
+        }
+    };
+
+    // ✨ استدعاء الدالة هنا لتهيئة الحالة عند الإنشاء
+    loadSavedMusicUrl();
+}
+
+/**
+ * دالة لإظهار النافذة المنبثقة لرفع الأغاني.
+ * هذه هي الدالة التي يجب استدعاؤها عند الضغط على الزر.
+ */
+window.showMusicUploadModal = function() {
+    createAndAppendMusicUploadModal();
+    const musicModal = document.getElementById('music-upload-modal');
+    if (musicModal) {
+        musicModal.style.display = 'flex';
+        // ✨ استدعاء الدالة عند إظهار المودال لضمان التحقق من الرابط المحفوظ
+        // لا نحتاج لهذه الخطوة الآن لأننا نزيل السطر setUIState('upload')
+    }
+};
+
+
+
 document.addEventListener('DOMContentLoaded', async () => {
   await loadComponent("top-bar", "components/top-bar.html");
     await loadComponent("chat-box", "components/chat-box.html");
     await loadComponent("input-bar", "components/input-bar.html");
     await loadComponent("bottom-bar", "components/bottom-bar.html");
     
-    //js/main.js
-// ... (الكود السابق لا يتغير) ...
+    window.addEventListener('online', () => {
+    console.log('أنت الآن متصل بالإنترنت!');
+    // يمكنك إضافة وظائف هنا لتحديث الواجهة، مثل إظهار رسالة "متصل"
+    updateConnectionStatus(true);
+});
+
+window.addEventListener('offline', () => {
+    console.log('لقد فقدت الاتصال بالإنترنت!');
+    // يمكنك إضافة وظائف هنا لتحديث الواجهة، مثل إظهار رسالة "غير متصل"
+    updateConnectionStatus(false);
+});
+
+    //js/main.js.
+updateConnectionStatus(navigator.onLine);
 
     try {
     // حاول جلب كل المستخدمين والزوار
@@ -937,12 +1146,52 @@ if (isOnline) {
                 optionsMenu.classList.remove('show-menu');
             });
             const musicButton = optionsMenu.querySelector('#music-btn');
-            musicButton.addEventListener('click', () => {
-                alert('سيتم فتح نافذة مشاركة الأغاني قريباً!');
-                optionsMenu.classList.remove('show-menu');
-            });
-            plusButtonToggle.parentElement.appendChild(optionsMenu);
-        }
+    musicButton.addEventListener('click', () => {
+        // ✨ هذا هو التعديل: نفتح النافذة المنبثقة الجديدة
+        document.getElementById('music-upload-modal').style.display = 'flex';
+        optionsMenu.classList.remove('show-menu');
+    });
+
+    // ✨ هذا هو الكود الجديد الذي يضيف منطق الرفع
+    const musicUploadInput = document.getElementById('music-upload-input');
+    if (musicUploadInput) {
+        musicUploadInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const progressContainer = document.getElementById('music-progress-container');
+            const progressFill = document.getElementById('music-progress-fill');
+
+            progressContainer.style.display = 'flex';
+            progressFill.style.width = '0%';
+
+            try {
+                // استخدم نفس دالة رفع الملفات إلى Cloudinary
+                const musicUrl = await uploadFileToCloudinary(file, (progress) => {
+                    progressFill.style.width = `${progress}%`;
+                });
+
+                if (musicUrl) {
+                    const messageText = `🎶 أغنية جديدة 🎶`; // يمكنك تخصيص النص
+                    await sendMessage(messageText, currentRoomId, musicUrl, 'music');
+                    scrollToBottom();
+                }
+            } catch (error) {
+                console.error('فشل رفع الأغنية:', error);
+                alert('فشل رفع الأغنية. يرجى المحاولة مرة أخرى.');
+            } finally {
+                // إخفاء المودال بعد اكتمال الرفع أو فشله
+                document.getElementById('music-upload-modal').style.display = 'none';
+                musicUploadInput.value = '';
+                progressContainer.style.display = 'none';
+                progressFill.style.width = '0%';
+            }
+        });
+    }
+
+    plusButtonToggle.parentElement.appendChild(optionsMenu);
+}
+
         function hideOptionsMenu() {
             if (optionsMenu) optionsMenu.classList.remove('show-menu');
         }
@@ -1000,6 +1249,9 @@ if (isOnline) {
             });
         }
         await loadComponent("bottom-bar", "components/bottom-bar.html");
+        
+        createAndAppendMusicUploadModal();
+        
 if (chatUserId) await checkAndSendJoinMessage(currentRoomId);
 
 // --- تحميل أول صفحة رسائل ---
@@ -1225,8 +1477,15 @@ if (currentUserId) {
 // ... (بقية الكود)
 
 const handleMessageSend = async () => {
+    if (!navigator.onLine) {
+        showNotification('لا يمكن إرسال الرسالة. أنت غير متصل بالإنترنت.', 'error');
+        return; // توقف عن تنفيذ الدالة
+    }
+
     const messageText = messageInput.value.trim();
     if (!messageText) return;
+
+    // ... بقية الكود لإرسال الرسال
 
  // في ملف main.js، داخل دالة handleMessageSend
     if (messageText.toLowerCase() === '/clear') {
