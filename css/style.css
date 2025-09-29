@@ -296,23 +296,45 @@ body {
 
 /* ... (بقية كود CSS) ... */
 
-/* System message specific styles */
+/* System message styles */
 .system-message {
-  text-align: center;
-  margin: 15px 0;
-  font-style: italic;
-  color: #777;
-  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  margin: 5px 0; /* تم تقليل الهامش لتقريب الرسالة من الرسائل الأخرى */
+  gap: 10px;
+  direction: rtl;
+  justify-content: flex-start;
+}
+ 
+/* ... (بقية الكود بدون تغيير) ... */
+
+
+.system-message-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .system-message-content {
-  background-color: #e0e0e0;
-  padding: 8px 15px;
-  border-radius: 10px;
-  display: inline-block; /* Shrink to content */
-  max-width: 70%;
+  display: inline-block;
+  background-color: #f1f1f1;
+  color: #555;
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 10px 18px;
+  border-radius: 18px;
+  max-width: 75%;
   word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
+
+.system-message-content:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {
