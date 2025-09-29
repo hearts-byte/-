@@ -104,6 +104,9 @@ export function hideActiveQuoteBubble() {
 
 window.userInfoModal = null;
 
+// في ملف js/chat-ui.js
+// ... (الكود السابق)
+
 export function createUserInfoModal(targetElement, userData, allUsersAndVisitorsData) {
   if (userInfoModal) {
     userInfoModal.remove();
@@ -112,6 +115,7 @@ export function createUserInfoModal(targetElement, userData, allUsersAndVisitors
 
   const currentUserId = localStorage.getItem('chatUserId');
   const isCurrentUser = (userData.id === currentUserId);
+  const isSystemUser = (userData.id === 'system');
 
   let isTargetUserVisitor = false;
   const targetUserDataFull = allUsersAndVisitorsData.find(user => user.id === userData.id);
@@ -129,61 +133,65 @@ export function createUserInfoModal(targetElement, userData, allUsersAndVisitors
     viewerIsVisitor = true;
   }
 
-// الكود الأول: JavaScript
-userInfoModal = document.createElement('div');
-userInfoModal.classList.add('user-info-modal');
-userInfoModal.innerHTML = `
-<div class="modal-content">
-  <span class="close-button">&times;</span>
-  <div class="user-profile-header">
-    <img src="${userData.innerImage || 'images/Interior.png'}" alt="صورة الخلفية" class="profile-header-image">
-    <div class="overlay"></div>
-  </div>
-  <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name}" class="user-avatar-large">
-  <div class="user-info-group">
-    <div class="user-name-display">${userData.name}</div>
-    ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
-    <p class="user-age-gender-info">
-      ${userData.age ? `العمر: ${userData.age}` : ''}
-      ${userData.age && userData.gender ? ' | ' : ''}
-      ${userData.gender ? `الجنس: ${userData.gender}` : ''}
-    </p>
-    <div class="modal-buttons">
-      <button class="modal-button view-profile"><i class="fa-solid fa-user"></i> عرض الملف الشخصي</button>
-      <button class="modal-button start-private"><i class="fa-solid fa-envelope"></i> رسالة</button>
-      <button class="modal-button commands-btn"><i class="fa-solid fa-list"></i> الأوامر</button>
+  userInfoModal = document.createElement('div');
+  userInfoModal.classList.add('user-info-modal');
+  userInfoModal.setAttribute('data-user-id', userData.id);
+  userInfoModal.innerHTML = `
+    <div class="modal-content">
+      <span class="close-button">&times;</span>
+      <div class="user-profile-header">
+        <img src="${userData.innerImage || 'images/Interior.png'}" alt="صورة الخلفية" class="profile-header-image">
+        <div class="overlay"></div>
+      </div>
+      <img src="${userData.avatar || 'images/default-user.png'}" alt="${userData.name || userData.username}" class="user-avatar-large">
+      <div class="user-info-group">
+        <div class="user-name-display">${userData.name || userData.username}</div>
+        ${userData.rank ? `<p class="user-rank-info"> <img src="${RANK_IMAGE_MAP[userData.rank] || 'images/default-rank.png'}" alt="${userData.rank}" class="user-rank-image-modal" title="${userData.rank}"/></p>` : ''}
+        <p class="user-age-gender-info">
+          ${userData.age ? `العمر: ${userData.age}` : ''}
+          ${userData.age && userData.gender ? ' | ' : ''}
+          ${userData.gender ? `الجنس: ${userData.gender}` : ''}
+        </p>
+        <div class="modal-buttons">
+          <button class="modal-button view-profile"><i class="fa-solid fa-user"></i> عرض الملف الشخصي</button>
+          <button class="modal-button start-private"><i class="fa-solid fa-envelope"></i> رسالة</button>
+          <button class="modal-button commands-btn"><i class="fa-solid fa-list"></i> الأوامر</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-`;
+  `;
 
+  userInfoModal.addEventListener('click', (event) => {
+    if (event.target === userInfoModal) {
+      hideUserInfoModal();
+    }
+  });
 
-// تحديد هوية المستخدم الحالي
-
-userInfoModal.addEventListener('click', (event) => {
-        // التحقق مما إذا كان الهدف من الضغط هو المودال نفسه (الخلفية)
-        // وليس أي عنصر داخلي (مثل الأزرار أو الصور)
-        if (event.target === userInfoModal) {
-            hideUserInfoModal();
-        }
-    });
-
-const commandsButton = userInfoModal.querySelector('.modal-button.commands-btn');
-if (commandsButton) {
-  // ✨ هذا هو الشرط الجديد
-  if (isCurrentUser) {
-    commandsButton.style.display = 'none';
-  } else {
-    // إذا لم يكن المستخدم هو صاحب الحساب، نضيف له معالج النقر
-    commandsButton.addEventListener('click', (event) => {
+  const viewProfileButton = userInfoModal.querySelector('.modal-button.view-profile');
+  if (viewProfileButton) {
+    // ✨ إضافة معالج الحدث (event listener) لزر "عرض الملف الشخصي"
+    // سيتم تشغيل هذا الكود الآن لكل المستخدمين، بما فيهم النظام
+    viewProfileButton.addEventListener('click', (event) => {
       event.stopPropagation();
       hideUserInfoModal();
-      showCommandsModal(userData);
+      window.showViewProfileModal(userData, window.allUsersAndVisitorsData);
     });
   }
-}
 
-  userInfoModal.querySelector('.user-name-display').textContent = userData.name;
+  const commandsButton = userInfoModal.querySelector('.modal-button.commands-btn');
+  if (commandsButton) {
+    if (isCurrentUser) {
+      commandsButton.style.display = 'none';
+    } else {
+      commandsButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        hideUserInfoModal();
+        showCommandsModal(userData);
+      });
+    }
+  }
+
+  userInfoModal.querySelector('.user-name-display').textContent = userData.name || userData.username;
 
   document.body.appendChild(userInfoModal);
 
@@ -227,12 +235,6 @@ if (commandsButton) {
     hideUserInfoModal();
   });
 
-  userInfoModal.querySelector('.modal-button.view-profile').addEventListener('click', (event) => {
-    event.stopPropagation();
-    hideUserInfoModal();
-    window.showViewProfileModal(userData, window.allUsersAndVisitorsData);
-  });
-
   const startPrivateButton = userInfoModal.querySelector('.modal-button.start-private');
   if (startPrivateButton) {
     if (isCurrentUser || viewerIsVisitor || isTargetUserVisitor) {
@@ -247,7 +249,6 @@ if (commandsButton) {
     }
   }
 }
-
 
 function handleUserInfoModalOutsideClick(event) {
   const isClickedInsideModal = window.userInfoModal && window.userInfoModal.contains(event.target);
@@ -799,15 +800,61 @@ export function createMessageElement(messageData) {
   return messageItem;
 }
 
+// في ملف js/chat-ui.js
+
+// ... (الكود السابق) ...
+
+// تأكد أنك تستخدم هذا المسار الصحيح لصورة النظام
+// في ملف js/chat-ui.js
+// ... (الكود السابق) ...
+
+// تأكد أنك تستخدم هذا المسار الصحيح لصورة النظام
+const SYSTEM_AVATAR_PATH = 'default_bot.png'; 
+
+// ✨ الكائن الذي يمثل المستخدم "النظام"
+export const SYSTEM_USER = {
+    id: 'system',
+    username: 'النظام',
+    rank: 'ادمن',
+    avatar: SYSTEM_AVATAR_PATH,
+    innerImage: 'images/Interior.png', // صورة الخلفية
+    bio: 'أنا نظام الدردشة الآلي.',
+};
+
 export function createSystemMessageElement(messageText) {
-  const systemMessageItem = document.createElement('div');
-  systemMessageItem.classList.add('system-message');
-  const contentDiv = document.createElement('div');
-  contentDiv.classList.add('system-message-content');
-  contentDiv.textContent = messageText;
-  systemMessageItem.appendChild(contentDiv);
-  return systemMessageItem;
+  const elem = document.createElement('div');
+  elem.classList.add('system-message');
+  elem.setAttribute('data-user-id', SYSTEM_USER.id); // إضافة معرف للمستخدم
+
+  const avatar = document.createElement('img');
+  avatar.src = SYSTEM_AVATAR_PATH; 
+  avatar.classList.add('system-message-avatar');
+  avatar.setAttribute('data-user-id', SYSTEM_USER.id); // إضافة معرف للمستخدم
+  elem.appendChild(avatar);
+
+  const content = document.createElement('div');
+  content.classList.add('system-message-content');
+  content.textContent = messageText;
+  elem.appendChild(content);
+
+  // ✨ إضافة مستمع النقر على أفاتار النظام
+  avatar.addEventListener('click', (event) => {
+    event.stopPropagation();
+    // استدعاء دالة المودال مع بيانات المستخدم "النظام"
+    createUserInfoModal(avatar, SYSTEM_USER, [SYSTEM_USER]);
+  });
+  
+  // ✨ إضافة مستمع نقر لرسالة النظام بأكملها أيضًا
+  elem.addEventListener('click', (event) => {
+      // منع النقر على الرسالة نفسها من إخفاء المودال إذا كان مفتوحًا
+      event.stopPropagation();
+  });
+
+  return elem;
 }
+
+
+
 
 export function addWelcomeMessageToChat(chatBoxElement) {
   const currentUserName = localStorage.getItem('chatUserName') || 'زائر';

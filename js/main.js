@@ -981,9 +981,14 @@ function createAndAppendMusicUploadModal() {
     });
 
     document.getElementById('close-music-modal').addEventListener('click', () => {
-        modal.style.display = 'none';
-        // ✨ لا تقم بتعيين الحالة هنا
-    });
+    // 🚨 التعديل الرئيسي هنا: إيقاف تشغيل مشغل الصوت
+    if (!musicPlayer.paused) { // للتأكد من أنها لا تعمل بالفعل
+         musicPlayer.pause();
+    }
+    
+    modal.style.display = 'none';
+});
+
     
     // ✨ وظيفة جديدة: لجلب الرابط المحفوظ عند فتح النافذة
     const loadSavedMusicUrl = async () => {

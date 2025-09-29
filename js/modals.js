@@ -658,7 +658,12 @@ function createViewProfileModalHTML() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            
+                            <div id="view-profile-music-container" style="padding: 10px 20px; text-align: center; display: none;">
+                                <audio id="view-profile-music-player" controls style="width: 100%; height: 35px;"></audio>
+                                <p id="view-profile-music-message" style="color: #999; font-size: 11px; margin-top: 5px;">موسيقى الملف الشخصي</p>
+                            </div>
+                            </div>
                     </div>
                 </div>
                 <div class="tabs-container">
@@ -693,6 +698,8 @@ function createViewProfileModalHTML() {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+// ... (بقية الدالة كما كانت)
+
 
     window.g_viewProfileModal = document.getElementById('viewProfileModal');
     const closeButton = window.g_viewProfileModal.querySelector('.close-profile-modal');
@@ -771,11 +778,15 @@ if (editBtn) {
 // تأكد من استيراد كلتا الدالتين
 window.showViewProfileModal = function(userData, allUsersAndVisitorsData) {
     if (!window.g_viewProfileModal) {
+        // تأكد من أنك قمت بتعديل دالة createViewProfileModalHTML أولاً لإضافة مشغل الصوت!
         createViewProfileModalHTML();
     }
-
-window.g_viewProfileModal._currentUserData = userData;
-window.g_viewProfileModal.setAttribute('data-user-id', userData.id || '');
+    
+    // ✨ خطوة 1: إيقاف أي موسيقى سابقة لضمان عدم التداخل
+    window.hideViewProfileModal(); 
+    
+    window.g_viewProfileModal._currentUserData = userData;
+    window.g_viewProfileModal.setAttribute('data-user-id', userData.id || '');
 
     const targetUser = allUsersAndVisitorsData.find(user => user.id === userData.id);
 
@@ -787,7 +798,37 @@ window.g_viewProfileModal.setAttribute('data-user-id', userData.id || '');
         document.getElementById('view-profile-modal-rank-image').src = RANK_IMAGE_MAP[targetUser.rank] || 'images/default-rank.png';
         document.getElementById('view-profile-modal-inner-image').src = targetUser.innerImage || 'images/Interior.png';
         document.getElementById('view-profile-modal-status-display').textContent = targetUser.statusText || '';
+        
+        // ✨ خطوة 2: منطق الأغنية الجديدة
+                // ✨ خطوة 2: منطق الأغنية الجديدة مع تقرير الكونسول ✨
+        const musicPlayer = document.getElementById('view-profile-music-player');
+        const musicContainer = document.getElementById('view-profile-music-container');
+        const musicMessage = document.getElementById('view-profile-music-message');
 
+        if (musicPlayer && musicContainer) {
+            if (targetUser.musicUrl) {
+                musicPlayer.src = targetUser.musicUrl;
+                if (musicMessage) musicMessage.textContent = `موسيقى ملف ${targetUser.name || 'هذا المستخدم'}`;
+                musicContainer.style.display = 'block';
+                musicPlayer.load(); // تحميل الأغنية
+
+                // محاولة التشغيل التلقائي مع التعامل مع الحظر
+                musicPlayer.play().then(() => {
+                    console.log(`✅ تم تشغيل الموسيقى بنجاح للمستخدم: ${targetUser.name || targetUser.id}`);
+                }).catch(e => {
+                    // رسالة تفيد بأن المتصفح حظر التشغيل التلقائي
+                    console.warn(`⚠️ فشل التشغيل التلقائي للموسيقى للمستخدم ${targetUser.name || targetUser.id}. السبب: ${e.name} - يتطلب تفاعل من المستخدم.`, e);
+                }); 
+            } else {
+                musicPlayer.src = '';
+                musicContainer.style.display = 'none';
+                console.log(`ℹ️ لا يوجد رابط موسيقى للملف الشخصي للمستخدم: ${targetUser.name || targetUser.id}`);
+            }
+        }
+        // ✨ نهاية منطق الأغنية الجديدة
+
+        // ✨ نهاية منطق الأغنية الجديدة
+        
         // تحديث معلومات الإعجابات والمستوى
         const likesElement = document.querySelector('#viewProfileModal .likes span');
         const levelElement = document.querySelector('#viewProfileModal .level span');
@@ -891,7 +932,7 @@ window.g_viewProfileModal.setAttribute('data-user-id', userData.id || '');
 
     // كود إخفاء زر الثلاثة خطوط إذا الملف المعروض هو حسابي
     const menuBtn = window.g_viewProfileModal.querySelector('.menu-profile-modal');
-    const currentUserId = localStorage.getItem('chatUserId');
+    // currentUserId تم تعريفه سابقاً
     if (menuBtn) {
         if (userData.id === currentUserId) {
             menuBtn.style.display = "none";
@@ -953,8 +994,17 @@ if (editBtn) {
 
 // ... (تأكد من إضافة دالة addLike في chat-firestore.js وتحديث الـ HTML كما هو موضح في الرد السابق)
 
+// في ملف js/modals.js
+
 window.hideViewProfileModal = function() {
     if (window.g_viewProfileModal) {
+        // ✨ إيقاف الأغنية عند إغلاق المودال ✨
+        const musicPlayer = document.getElementById('view-profile-music-player');
+        if (musicPlayer) {
+            musicPlayer.pause();
+            musicPlayer.currentTime = 0; // إرجاعها إلى البداية
+        }
+        
         window.g_viewProfileModal.classList.remove('show');
         document.removeEventListener('click', window.handleViewProfileModalOutsideClick);
     }

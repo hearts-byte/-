@@ -99,6 +99,8 @@ export async function getChatRooms() {
   }
 }
 
+// ... (الكود السابق)
+ 
 export async function fetchRoomMessages(roomId, pageSize = 50, lastDoc = null) {
   const messagesCol = collection(db, 'rooms', roomId, 'messages');
   let q = query(messagesCol, orderBy('timestamp', 'desc'), limit(pageSize));
@@ -106,9 +108,9 @@ export async function fetchRoomMessages(roomId, pageSize = 50, lastDoc = null) {
     q = query(messagesCol, orderBy('timestamp', 'desc'), startAfter(lastDoc), limit(pageSize));
   }
   const snapshot = await getDocs(q);
-  return snapshot.docs.reverse();
+  return snapshot.docs;
 }
-
+ 
 export async function loadInitialMessages(roomId, renderMessages) {
   const docs = await fetchRoomMessages(roomId, 50);
   window._messagesPagination = {
@@ -117,9 +119,9 @@ export async function loadInitialMessages(roomId, renderMessages) {
     hasMore: docs.length === 50,
     roomId: roomId
   };
-  renderMessages(docs, true);
+  renderMessages(docs.reverse(), true);
 }
-
+ 
 export async function loadMoreMessages(renderMessages) {
   const pagination = window._messagesPagination;
   if (!pagination || !pagination.hasMore || !pagination.lastDoc) return;
@@ -130,8 +132,10 @@ export async function loadMoreMessages(renderMessages) {
   }
   pagination.lastDoc = docs.length > 0 ? docs[docs.length - 1] : pagination.lastDoc;
   pagination.messages = docs.concat(pagination.messages);
-  renderMessages(docs, false);
+  renderMessages(docs.reverse(), false);
 }
+ 
+// ... (بقية الكود)
 
 // في ملف chat-firestore.js
 // ... (الاستيرادات)
@@ -399,6 +403,9 @@ let cachedUsersAndVisitors = null;
 let cachedUsersTimestamp = 0;
 const CACHE_DURATION = 60 * 1000;
 
+// في ملف chat-firestore.js
+// ... (الكود السابق) ...
+
 export async function getAllUsersAndVisitors(forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && cachedUsersAndVisitors && (now - cachedUsersTimestamp < CACHE_DURATION)) {
@@ -406,6 +413,8 @@ export async function getAllUsersAndVisitors(forceRefresh = false) {
   }
   const onlineUsers = new Map();
   const usersSnapshot = await getDocs(collection(db, 'users'));
+  
+  // 1. إضافة musicUrl للمستخدمين المسجلين
   usersSnapshot.forEach(docSnap => {
     const userData = docSnap.data();
     onlineUsers.set(docSnap.id, {
@@ -420,10 +429,15 @@ export async function getAllUsersAndVisitors(forceRefresh = false) {
       age: userData.age || '',
       statusText: userData.statusText || '',
       bio: userData.bio || '',
-      email: userData.email || ''
+      email: userData.email || '',
+      // ✨ إضافة حقل musicUrl هنا ✨
+      musicUrl: userData.musicUrl || null 
     });
   });
+  
   const visitorsSnapshot = await getDocs(collection(db, 'visitors'));
+  
+  // 2. إضافة musicUrl للزوار (إذا كان متوفراً في وثيقة الزائر)
   visitorsSnapshot.forEach(docSnap => {
     const visitorData = docSnap.data();
     if (!onlineUsers.has(docSnap.id)) {
@@ -439,14 +453,37 @@ export async function getAllUsersAndVisitors(forceRefresh = false) {
         age: visitorData.age || '',
         statusText: visitorData.statusText || '',
         bio: visitorData.bio || '',
-        email: visitorData.email || ''
+        email: visitorData.email || '',
+        // ✨ إضافة حقل musicUrl هنا ✨
+        musicUrl: visitorData.musicUrl || null 
       });
     }
   });
+
+
+  // ✨ إضافة حساب النظام يدوياً إلى القائمة.
+  // تم جلبه من `chat-ui.js` لضمان وجود البيانات.
+  const systemUser = {
+      id: 'system',
+      name: 'النظام',
+      avatar: 'default_bot.png',
+      innerImage: 'images/Interior.png',
+      rank: 'ادمن',
+      level: 1,
+      likes: [],
+      gender: '',
+      age: '',
+      statusText: 'أنا نظام الدردشة الآلي.',
+      bio: 'أنا نظام الدردشة الآلي.'
+  };
+
+  onlineUsers.set(systemUser.id, systemUser);
+  
   cachedUsersAndVisitors = Array.from(onlineUsers.values());
   cachedUsersTimestamp = now;
   return cachedUsersAndVisitors;
 }
+
 
 export async function getUserData(userId) {
   try {
@@ -826,12 +863,30 @@ export async function removeLike(likerId, likedUserId) {
   }
 }
 
+// في ملف chat-firestore.js
+
+// ... (الاستيرادات) ...
+
+// ✨ كائن يمثل المستخدم "النظام"
 export const SYSTEM_USER = {
-    id: 'system',
-    username: 'النظام',
-    rank: 'ادمن',
-    avatar: 'default_bot.png'
+  id: 'system',
+  username: 'النظام',
+  rank: 'ادمن',
+  avatar: 'default_bot.png',
+  innerImage: 'images/Interior.png',
+  bio: 'أنا نظام الدردشة الآلي.',
+  userType: 'system', // لتحديد نوع الحساب
+  timestamp: serverTimestamp()
 };
+ 
+// ✨ دالة جديدة لإنشاء حساب النظام إذا لم يكن موجودًا
+
+// ✨ استدعاء الدالة عند تحميل التطبيق أو ملف Firestore
+// يمكن استدعاؤها في main.js أو في بداية chat-firestore.js
+
+ 
+// ... (بقية الكود) ...
+
 
 export async function addNotification(text, sender, recipientId) {
     try {
