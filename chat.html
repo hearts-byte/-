@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title> شات القلوب الراقية</title>
+  <meta name="description" content=" شات القلوب الراقية - دردشة مجانية وأصدقاء ممتعين.">
+  <meta name="keywords" content="شات, دردشة, قلوب, أصدقاء,  شات القلوب الراقية">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="stylesheet" href="css/combined.min.css" />
+  <!-- Font Awesome: نحمّل فقط fontawesome (الأساس) + solid + regular، وهما الوحيدان المستخدمان فعليًا في هذه الصفحة (بدل حزمة all.min.css الكاملة اللي فيها brands وduotone وlight وthin وsharp غير مستخدمة).
+       كما نحمّلها بطريقة غير حاجبة للعرض (print trick): تتحمّل بالخلفية والصفحة تُعرض فورًا، وتتحول لـ all فور اكتمال التحميل. -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/fontawesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/solid.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/regular.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/fontawesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/solid.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/regular.min.css">
+  </noscript>
+</head>
+<body>
+  <!-- تأجيل تحميل Algolia (defer) حتى لا يوقف عرض الصفحة، مع إبقاء تنفيذه قبل الموديولات التي تعتمد عليه -->
+  <script defer src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js"></script>
+
+  <script>
+  if (!localStorage.getItem('chatUserId')) {
+    window.location.href = 'index.html';
+  }
+  if (!localStorage.getItem('currentRoom')) {
+    window.location.href = 'rooms.html';
+  }
+</script>
+  <script>
+  // ✨ نطبّق آخر حالة معروفة لصلاحيات الشريط العلوي (خاص/إبلاغ) *قبل* رسم
+  // #top-bar أصلاً، حتى تظهر الأزرار من أول لحظة بشكلها الصحيح ولا يحصل أي
+  // وميض (ظهور ثم اختفاء، أو ظهور مفاجئ). main.js يحدّث هذا التخزين بعد كل
+  // تحقق فعلي من رتبة المستخدم من قاعدة البيانات.
+  try {
+    var tbPerms = JSON.parse(localStorage.getItem('tbPerms') || '{}');
+    document.documentElement.dataset.canPrivate = tbPerms.canPrivate ? '1' : '0';
+    document.documentElement.dataset.canReport = tbPerms.canReport ? '1' : '0';
+  } catch (e) {
+    document.documentElement.dataset.canPrivate = '0';
+    document.documentElement.dataset.canReport = '0';
+  }
+</script>
+  <div id="top-bar">
+    <div class="top-bar">
+      <div class="top-buttons">
+        <div class="profile" id="profileButton">
+          <img id="user-profile-image" alt="user" style="display:none;">
+        </div>
+        <div class="btn report" id="reportButton">
+            <i class="fas fa-exclamation-circle"></i><br>إبلاغ
+        </div>
+        <div class="btn notify head_option4" id="notifications-btn">
+            <i class="fas fa-bell"></i>
+            <span id="notifications-badge" class="badge"></span>
+            <br>إشعار
+        </div>
+        <div class="btn online head_option3" id="online-users-btn">
+            <i class="fas fa-users"></i><br>متصلين
+        </div>
+        <div class="btn private head_option1" id="privateButton">
+            <i class="fas fa-envelope"></i><br>خاص
+        </div>
+        <div class="btn friend head_option5">
+            <i class="fas fa-user-plus"></i><br>صداقة
+        </div>
+        <div class="btn refresh head_option8">
+            <i class="fas fa-sync-alt"></i><br>تحديث
+        </div>
+        <div class="btn menu head_option6">
+            <i class="fas fa-bars"></i><br>قائمة
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-container">
+      <div id="chat-box">
+        <div class="chat-box"></div>
+      </div>
+  </div>
+  <div id="input-bar">
+    <div class="chat-input-wrapper">
+        <div id="normal-chat-input" class="input-bar">
+            <button class="btn icon-btn send-btn"><i class="fas fa-paper-plane"></i></button>
+            <div class="input-field-container">
+                <input type="text" id="message-input" placeholder="اكتب هنا..." />
+                <input type="file" id="image-upload-input" style="display: none;" />
+            </div>
+            <button class="btn icon-btn emoji-btn-circle"><i class="far fa-grin-alt"></i></button>
+            <div class="plus-button-container">
+                <button class="btn icon-btn plus-btn-circle" id="plus-btn-toggle">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="muted-message-container" class="muted-message-container">
+            <span>الدردشة مقفلة</span>
+        </div>
+    </div>
+  </div>
+  <div id="bottom-bar">
+    <div class="bottom-bar">
+        <div class="bottom-buttons-container">
+            <button class="btn bottom-btn rooms-btn">
+                <i class="fas fa-home"></i>
+                <span>الغرف</span>
+            </button>
+            <button class="btn bottom-btn news-btn">
+                <i class="fas fa-newspaper"></i>
+                <span>الأخبار</span>
+            </button>
+            <button class="btn bottom-btn diary-btn">
+                <i class="fas fa-book-open"></i>
+                <span>اليوميات</span>
+            </button>
+            <button class="btn bottom-btn private-btn">
+                <i class="fas fa-lock"></i>
+                <span>الخاص</span>
+            </button>
+        </div>
+    </div>
+  </div>
+    <script type="module" src="js/modals.js"></script>
+    <script type="module" src="js/extra-modals.js"></script> <script type="module" src="js/main.js"></script>
+</body>
+</html>

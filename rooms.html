@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الغرف المتاحة</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" href="css/rooms.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <!-- Font Awesome: هذه الصفحة تستخدم أيقونات fas فقط -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/fontawesome.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/solid.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/fontawesome.min.css">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/solid.min.css">
+    </noscript>
+</head>
+<body>
+   <script>
+    if (!localStorage.getItem('chatUserId')) {
+      window.location.href = 'index.html';
+    }
+    const lastVisitedRoomId = localStorage.getItem('lastVisitedRoomId');
+    if (lastVisitedRoomId) {
+        window.location.href = `chat.html?roomId=${lastVisitedRoomId}`;
+    }
+    </script>
+    <div class="header-bar">
+        <div class="profile-icon">
+            <img id="userProfilePic" src="" alt="صورة المستخدم">
+        </div>
+        <div class="chat-icon">
+            <i class="fas fa-comments"></i>
+        </div>
+    </div>
+    <div class="user-modal" id="userModal">
+        <div class="modal-header">
+            <div class="modal-profile">
+                <img id="modalProfilePic" src="" alt="صورة المستخدم">
+                <h4 id="modalUserName"></h4>
+            </div>
+            <div id="modalUserRank" class="user-rank"></div>
+        </div>
+        <button id="logoutBtn" class="logout-btn">تسجيل الخروج</button>
+    </div>
+    <div class="add-room-bar">
+        <button class="add-room-btn floating-add-btn" id="addRoomBtn" title="إضافة غرفة">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    <div class="main-content">
+        <div class="search-box">
+            <input type="text" id="roomSearch" placeholder="بحث">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="room-list" id="room-list">
+        </div>
+    </div>
+    <div class="modal" id="addRoomModal">
+        <div class="modal-content">
+            <span class="close" id="closeAddRoom">&times;</span>
+            <h3>إضافة غرفة جديدة</h3>
+            <form id="addRoomForm" autocomplete="off">
+                <div class="form-group">
+                    <label for="roomName">اسم الغرفة</label>
+                    <input type="text" id="roomName" name="roomName" required maxlength="40">
+                </div>
+                <div class="form-group">
+                    <label for="roomDesc">وصف الغرفة</label>
+                    <textarea id="roomDesc" name="roomDesc" rows="2" maxlength="100"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>صورة الغرفة (اختياري)</label>
+                    <input type="file" id="roomImageFile" accept="image/*">
+                    <div id="roomImagePreview" class="image-preview"></div>
+                    <div id="imageUploadProgress" class="upload-progress"></div>
+                </div>
+                <div class="form-row">
+                    <label>
+                        <input type="checkbox" id="roomLocked" name="roomLocked">
+                        مغلقة (تحتاج إذن للدخول)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="roomAdminOnly" name="roomAdminOnly">
+                        للمشرفين فقط
+                    </label>
+                </div>
+                <div class="form-group" id="roomPasswordGroup" style="display:none;">
+                    <label for="roomPassword">كلمة مرور الغرفة</label>
+                    <input type="password" id="roomPassword" name="roomPassword" maxlength="40" autocomplete="new-password" placeholder="أدخل كلمة المرور للغرفة">
+                </div>
+                <button type="submit" class="submit-btn">إضافة</button>
+            </form>
+            <div id="addRoomMsg" class="modal-msg"></div>
+        </div>
+    </div>
+    <div class="modal" id="passwordModal">
+        <div class="modal-content password-modal-content">
+            <span class="close" id="closePasswordModal">&times;</span>
+            <h4 style="margin-bottom:15px;color:#7c3aed;">الغرفة مغلقة</h4>
+            <form id="roomPasswordForm" autocomplete="off">
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label for="enterRoomPassword">أدخل كلمة المرور للغرفة</label>
+                    <input type="password" id="enterRoomPassword" name="enterRoomPassword" maxlength="40" autocomplete="current-password" placeholder="كلمة المرور" required>
+                </div>
+                <button type="submit" class="submit-btn">دخول</button>
+            </form>
+            <div id="passwordModalMsg" class="modal-msg"></div>
+        </div>
+    </div>
+    <script type="module" src="js/rooms.js"></script>
+</body>
+</html>
